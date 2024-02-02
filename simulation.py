@@ -4,7 +4,7 @@ import random
 import argparse
 
 
-# Mock IP addresses for simplicity
+# Mock IP addresses
 client_ip = "192.168.1.2"
 hub_ip = "192.168.1.1"
 router_ip = "10.0.0.1"
@@ -136,7 +136,7 @@ def run_simulation(delay_min, delay_max, client_ip, cloud_server_ip):
     # Initialize IoT Devices
     iot_devices = [IoTDevice("IoT-Device-1", hub), IoTDevice("IoT-Device-2", hub)]
 
-    for _ in range(5):  # Run the loop 5 times for demonstration; adjust as needed
+    for _ in range(5):  # Run the loop 5 times for testing
         # Simulate IoT devices sending data with random delays
         for iot_device in iot_devices:
             # Generate random data for simplicity
@@ -151,7 +151,6 @@ def run_simulation(delay_min, delay_max, client_ip, cloud_server_ip):
 
         # Optionally, simulate client-server interactions with delays
         # This could include TLS handshakes, keep-alive packets, etc.
-        # For brevity, this part is omitted but can be implemented similarly
             
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Network Simulation")
