@@ -1,4 +1,8 @@
 from scapy.all import *
+import time
+import random
+import argparse
+
 
 # Mock IP addresses for simplicity
 client_ip = "192.168.1.2"
@@ -47,12 +51,17 @@ class Hub:
 
 class Router:
     def __init__(self):
-        self.routing_table = {cloud_server_ip: "Cloud Server"}
+        # Include hub_ip in routing to simulate forwarding to the cloud server
+        self.routing_table = {cloud_server_ip: "Cloud Server", hub_ip: "Hub"}
 
     def process_packet(self, packet):
+        # Adjusted to check if packet destination is the cloud server or requires forwarding through the hub
         if packet.dst in self.routing_table:
             print(f"Router: Routing {packet.summary()} to {self.routing_table[packet.dst]}")
-            cloud_server.receive_packet(packet)
+            # Forward to cloud server directly if destination is cloud server
+            if packet.dst == cloud_server_ip:
+                cloud_server.receive_packet(packet)
+            # Additional logic for forwarding from hub to cloud server could be added here
         else:
             print("Router: Destination unreachable")
 
@@ -119,20 +128,42 @@ router = Router()
 cloud_server = CloudServer()
 client = Client()
 
-# Initialize and simulate IoT Devices
-iot_device1 = IoTDevice("IoT-Device-1", hub)
-iot_device2 = IoTDevice("IoT-Device-2", hub)
+def run_simulation(delay_min, delay_max, client_ip, cloud_server_ip):
 
-# Running the simulation
-print("\n--- TCP Three-way Handshake ---")
-client.send_packet(Packet(src=client_ip, dst=cloud_server_ip, seq=100, flags='S'))
+    # Use delay_min and delay_max in the simulation loop for random delays
+    delay = random.uniform(delay_min, delay_max)
 
-print("\n--- Starting TLS Handshake ---")
-client.start_tls_handshake()
+    # Initialize IoT Devices
+    iot_devices = [IoTDevice("IoT-Device-1", hub), IoTDevice("IoT-Device-2", hub)]
 
-print("\n--- Sending Keep-Alive Packet ---")
-client.send_keep_alive()
+    for _ in range(5):  # Run the loop 5 times for demonstration; adjust as needed
+        # Simulate IoT devices sending data with random delays
+        for iot_device in iot_devices:
+            # Generate random data for simplicity
+            data = f"Data from {iot_device.device_id} at {time.strftime('%H:%M:%S')}"
+            print("\n--- IoT Device Sending Data ---")
+            iot_device.send_data(data)
 
-print("\n--- IoT Devices Sending Data ---")
-iot_device1.send_data("Temperature: 22C")
-iot_device2.send_data("Humidity: 55%")
+            # Introduce a random delay to simulate network/device latency
+            delay = random.uniform(0.5, 2.0)  # Random delay between 0.5 and 2 seconds
+            print(f"Delaying next action by {delay:.2f} seconds...")
+            time.sleep(delay)
+
+        # Optionally, simulate client-server interactions with delays
+        # This could include TLS handshakes, keep-alive packets, etc.
+        # For brevity, this part is omitted but can be implemented similarly
+            
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Network Simulation")
+    parser.add_argument('--delay_min', type=float, default=0.5, help='Minimum delay in seconds')
+    parser.add_argument('--delay_max', type=float, default=2.0, help='Maximum delay in seconds')
+    parser.add_argument('--client_ip', type=str, default="192.168.1.2", help='IP address for the client')
+    parser.add_argument('--cloud_server_ip', type=str, default="10.0.0.2", help='IP address for the cloud server')
+    # Add more arguments as needed
+
+    args = parser.parse_args()
+    return args
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    run_simulation(args.delay_min, args.delay_max, args.client_ip, args.cloud_server_ip)
