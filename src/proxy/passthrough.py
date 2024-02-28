@@ -199,11 +199,26 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--port',type=int, default=10000, metavar='P',help= 'port to listen')
     args = parser.parse_args()
 
-    logger = logging.getLogger('logger')
-    sh = logging.StreamHandler(stream=None)
-    formatter = logging.Formatter('%(asctime)s | %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
+    #logger = logging.getLogger('logger')
+    #sh = logging.StreamHandler(stream=None)
+    #formatter = logging.Formatter('%(asctime)s | %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    #sh.setFormatter(formatter)
+    #logger.addHandler(sh)
+
+    # Configure logger
+    logger = logging.getLogger('TLSLogger')
+    logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    # File handler
+    file_handler = logging.FileHandler('tls_analysis.log')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
     if args.verbose: 
         logger.setLevel(logging.DEBUG)
