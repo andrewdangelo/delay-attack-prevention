@@ -72,31 +72,46 @@ class Session(threading.Thread):
                         flag.flush()
                         
 
-    def analyze(self,msg,dst):
-        if dst == "server":
-            address = self.s_addr
-        else:
-            address = self.d_addr
-        records_sig = TLSType(msg)
-        type_list = [x[0] for x in records_sig]
-        if ('application_data' in type_list):
-            lengths = [x[1] for x in records_sig]
-            logger.info("record of %s bytes to %s"%(str(lengths),address))
-            with open('./flag.txt','rt+') as flag:
-                instruct = flag.read()
-                length = len(msg)
-                if len(instruct) > 0:
-                    length_range = instruct.split(' ')[0]
-                    delay = int(instruct.split(' ')[1])
-                    minimal = int(length_range.split(',')[0])
-                    maximal = int(length_range.split(',')[1]) 
-                    if self.in_range((minimal,maximal),lengths):
-                        if dst == "server":
-                            self.device_q.put(delay)
-                        else:
-                            self.server_q.put(delay)
-                        flag.truncate(0)
-                        flag.flush()
+def analyze(self, msg, dst):
+    # Determine the destination of the message based on the 'dst' parameter.
+    if dst == "server":
+        address = self.s_addr
+    else:
+        address = self.d_addr
+    
+    # Analyze the TLS type of the message using the TLSType function, obtaining a list of record signatures.
+    records_sig = TLSType(msg)
+    
+    # Extract only the types of TLS records from the analysis results.
+    type_list = [x[0] for x in records_sig]
+    
+    # Check if 'application_data' is among the types of TLS records in the message.
+    if ('application_data' in type_list):
+        # Extract the lengths of the TLS records.
+        lengths = [x[1] for x in records_sig]
+        
+        # Log the lengths of the records being sent to the address.
+        logger.info("record of %s bytes to %s" % (str(lengths), address))
+        
+        # Attempt to read instructions from a file named 'flag.txt'.
+        with open('./flag.txt', 'rt+') as flag:
+            instruct = flag.read()
+            if len(instruct) > 0:
+                # If instructions exist, parse them for a length range and a delay value.
+                length_range, delay = instruct.split(' ')[0:2]
+                minimal, maximal = map(int, length_range.split(','))
+                
+                # Check if any of the TLS record lengths fall within the specified range.
+                if self.in_range((minimal, maximal), lengths):
+                    # If so, depending on the destination, add the delay to the appropriate queue.
+                    if dst == "server":
+                        self.device_q.put(int(delay))
+                    else:
+                        self.server_q.put(int(delay))
+                        
+                    # Clear the instructions from the file to prevent repeated processing.
+                    flag.truncate(0)
+                    flag.flush()
 
 
 
