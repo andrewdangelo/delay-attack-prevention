@@ -1,15 +1,19 @@
 import math, random
 import numpy as np
 import matplotlib.pyplot as plt
+
 #%% orchestrate1
 # print {delta: avg[w]}, fixed attack time
 t0, t1 = 40, 110
 delta_num = 5 # including delta0
 atk_num = 50
 
+def lcm(a, b):
+    return abs(a*b) // math.gcd(a, b)
+
 def cal_w(t0, t1, delta_num, atk_num):
     g = math.gcd(t0, t1)
-    l = math.lcm(t0, t1)
+    l = lcm(t0, t1)
     gran = 0.1
     atk = list(np.random.uniform(0, l, atk_num)) # [0, l)
     d = {}
@@ -53,7 +57,7 @@ atk_num = 10
 
 def cal_w(t0, t1, delta_num, atk_num):
     g = math.gcd(t0, t1)
-    l = math.lcm(t0, t1)
+    l = lcm(t0, t1)
     gran = 0.1
     atk = list(np.random.uniform(0, l, atk_num)) # [0, l)
     d = {}
@@ -95,7 +99,7 @@ gran = 0.1
 
 def cal_w(t0, t1, atk_num):
     g = math.gcd(t0, t1)
-    l = math.lcm(t0, t1)
+    l = lcm(t0, t1)
     gran = 0.1
     atk = list(np.random.uniform(0, l, atk_num)) # [0, l)
     deltas = list(np.arange(0, 2*g, gran))
@@ -140,7 +144,7 @@ atk_times = 4
 gran = 0.1
 
 delta1 = np.random.random() * t0 # t0 + delta1 = t1
-l = math.lcm(t0, t1)
+l = lcm(t0, t1)
 T0 = list(np.arange(0, l+gran, t0))
 T1 = list(np.arange(delta1, l+gran, t1))
 T = list(set(T0 + T1))
@@ -180,7 +184,7 @@ delta2 = np.random.random() * t0
 delta3 = delta2 + delta23
 delta4 = np.random.random() * t0
 
-# l = math.lcm(t0, t1, t2, t3, t4, t5)
+# l = lcm(t0, t1, t2, t3, t4, t5)
 l = 10000
 T0 = list(np.arange(0, l+gran, t0))
 T1 = list(np.arange(delta1, l+gran, t1))
