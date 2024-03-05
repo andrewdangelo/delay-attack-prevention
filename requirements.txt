@@ -1,3 +1,8 @@
 numpy
 matplotlib
 scapy
+python-iptables
+netifaces
+pick
+gevent
+dpkt
