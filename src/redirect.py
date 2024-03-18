@@ -16,6 +16,6 @@ def clean_nftables():
     
 
 if __name__ == "__main__":
-    interfaces = list_interfaces()
+    #interfaces = list_interfaces()
     clean_nftables()
-    print(interfaces)
+    #print(interfaces)
