@@ -7,12 +7,12 @@ def list_interfaces():
     iface, index = pick(netifaces.interfaces(), 'Please choose the wireless interface used for hotspot')
     return iface
 
-""" def clean_nftables():
+def clean_nftables():
     subprocess.run([ "nft", "flush", "table", "ip", "nat"])
     subprocess.run([ "nft", "delete", "table", "ip", "nat"])
     subprocess.run([ "nft", "flush", "table", "ip", "filter"])
     subprocess.run([ "nft", "delete", "table", "ip", "filter"])
-    print("Ran nftables....") """
+    print("Ran nftables....")
 
 def list_nftables_rules():
     result = subprocess.run(["nft", "list", "ruleset"], capture_output=True, text=True)
@@ -21,9 +21,9 @@ def list_nftables_rules():
     else:
         print("Error listing nftables rules:", result.stderr)
 
-def get_forward_chain_rules():
+def get_chain_rules(rule):
     # Command to list the rules in the forward chain of the inet fw4 table
-    command = ["nft", "list", "chain", "inet", "fw4", "forward"]
+    command = ["nft", "list", "chain", "inet", "fw4", rule]
     
     # Execute the command and capture the output
     result = subprocess.run(command, capture_output=True, text=True)
@@ -46,10 +46,10 @@ def get_forward_chain_rules():
 
 if __name__ == "__main__":
     #interfaces = list_interfaces()
-    """ list_nftables_rules() """
-    forward_chain_rules = get_forward_chain_rules()
+    #list_nftables_rules()
+    chain_rules = get_chain_rules("forward")
 
     # Print each rule
-    for rule in forward_chain_rules:
+    for rule in chain_rules:
         print(rule)
     #print(interfaces)
