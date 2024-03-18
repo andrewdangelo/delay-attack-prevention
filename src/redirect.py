@@ -8,10 +8,10 @@ def list_interfaces():
     return iface
 
 def clean_nftables():
-    subprocess.run(["sudo", "nft", "flush", "table", "ip", "nat"])
-    subprocess.run(["sudo", "nft", "delete", "table", "ip", "nat"])
-    subprocess.run(["sudo", "nft", "flush", "table", "ip", "filter"])
-    subprocess.run(["sudo", "nft", "delete", "table", "ip", "filter"])
+    subprocess.run([ "nft", "flush", "table", "ip", "nat"])
+    subprocess.run([ "nft", "delete", "table", "ip", "nat"])
+    subprocess.run([ "nft", "flush", "table", "ip", "filter"])
+    subprocess.run([ "nft", "delete", "table", "ip", "filter"])
     print("Ran nftables....")
     
 
