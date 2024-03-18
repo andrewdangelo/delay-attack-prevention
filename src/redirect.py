@@ -1,16 +1,17 @@
 import netifaces
 from pick import pick
-import time
-import subprocess,argparse,netifaces,configparser,iptc,os
+import subprocess
 
 
 def list_interfaces():
     iface, index = pick(netifaces.interfaces(), 'Please choose the wireless interface used for hotspot')
     return iface
 
-def clean_iptables():
-    os.system("sudo sysctl -w net.ipv4.ip_forward=1")
-    os.system("sysctl -w net.ipv4.conf.all.send_redirects=1")
+def clean_nftables():
+    subprocess.run(["sudo", "nft", "flush", "table", "ip", "nat"])
+    subprocess.run(["sudo", "nft", "delete", "table", "ip", "nat"])
+    subprocess.run(["sudo", "nft", "flush", "table", "ip", "filter"])
+    subprocess.run(["sudo", "nft", "delete", "table", "ip", "filter"])
     
 
 if __name__ == "__main__":
