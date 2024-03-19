@@ -103,8 +103,8 @@ if __name__ == "__main__":
     print(rules)
     print('---------------------------------------------')
     print('Getting devices and inserting rules....')
-    file_path = './devices.json'
-    devices = get_devices(file_path)
+    
+    devices = get_devices('devices.json')
     setup_tables(devices)
     print('---------------------------------------------')
 
