@@ -54,7 +54,7 @@ def setup_tables(devices):
     with open('added_rules.txt', 'w') as file:
         for device in devices:
             print(device)
-            """ addr = device['ip_address']
+            addr = device['ip_address']
             port = device['port']
             
             # Construct nftables redirect and drop rules
@@ -74,7 +74,7 @@ def setup_tables(devices):
                     # Save the chain and rule to the file
                     file.write(f"{chain}|{rule}\n")
                 except subprocess.CalledProcessError as e:
-                    print(f"Failed to insert rule: {command}\nError: {e}") """
+                    print(f"Failed to insert rule: {command}\nError: {e}")
 
 def cleanup_tables():
     with open('added_rules.txt', 'r') as file:
@@ -105,5 +105,5 @@ if __name__ == "__main__":
     print('---------------------------------------------')
 
     print('***UPDATED RULES***')
-    inserted_rules = get_chain_rules("PREROUTING")
+    inserted_rules = get_chain_rules("prerouting")
     print(inserted_rules)
