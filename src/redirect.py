@@ -51,21 +51,21 @@ def get_chain_rules(rule):
         return []
 
 def setup_tables(devices):
-    with open('added_rules.txt', 'w') as file:
+     with open('added_rules.txt', 'w') as file:
         for device in devices:
             print(device)
             addr = device['ip_address']
             port = device['port']
             
-            # Construct nftables redirect and drop rules
+            # Updated rules for redirect (using dstnat for NAT redirection) and drop
             rules = [
-                (f"prerouting", f"ip protocol tcp ip saddr {addr} tcp dport 0-65535 redirect to :{port}"),
-                (f"prerouting", f"ip protocol tcp ip daddr {addr} tcp dport 0-65535 redirect to :{port}"),
+                (f"dstnat", f"ip protocol tcp ip saddr {addr} tcp dport 0-65535 redirect to :{port}"),
+                (f"dstnat", f"ip protocol tcp ip daddr {addr} tcp dport 0-65535 redirect to :{port}"),
                 (f"forward", f"ip protocol tcp ip saddr {addr} tcp dport 0-65535 drop"),
                 (f"forward", f"ip protocol tcp ip daddr {addr} tcp dport 0-65535 drop")
             ]
 
-            # Insert rules into the 'prerouting' and 'forward' chains of the 'inet fw4' table and save to file
+            # Insert rules into the appropriate chains of the 'inet fw4' table and save to file
             for chain, rule in rules:
                 command = f"nft add rule inet fw4 {chain} {rule}"
                 try:
