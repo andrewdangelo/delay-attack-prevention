@@ -5,27 +5,23 @@ import json
 
 
 def get_devices(file_path):
-    # Open and read the JSON file
     with open(file_path, 'r') as file:
-        devices = json.load(file)
+        data = json.load(file)
+        # Adjust here to match your JSON structure
+        devices = data['devices']  # Adjusted to access the nested list
 
-    # Initialize an empty list to hold the device dictionaries
     device_list = []
-
-    # Iterate over each device in the list
     for device in devices:
-        # Create a dictionary for the current device
         device_dict = {
             'name': device['name'],
             'interface': device['interface'],
-            'ip_address': device['ip address'], # Make sure this matches the key in your JSON
+            'ip_address': device['ip address'],  # Ensure this matches your JSON keys
             'port': device['port']
         }
-        # Append the dictionary to the list of devices
         device_list.append(device_dict)
-    
-    # Return the list of device dictionaries
+
     return device_list
+
 
 def list_nftables_rules():
     result = subprocess.run(["nft", "list", "ruleset"], capture_output=True, text=True)
