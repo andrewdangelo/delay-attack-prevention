@@ -15,7 +15,7 @@ def get_devices(file_path):
         device_dict = {
             'name': device['name'],
             'interface': device['interface'],
-            'ip_address': device['ip address'],  # Ensure this matches your JSON keys
+            'ip_address': device['ip_address'],  # Ensure this matches your JSON keys
             'port': device['port']
         }
         device_list.append(device_dict)
