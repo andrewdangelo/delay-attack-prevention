@@ -1,4 +1,4 @@
-import netifaces
+import netifaces,iptc,os
 from pick import pick
 import subprocess
 import json
@@ -14,7 +14,6 @@ def get_devices(file_path):
     for device in devices:
         device_dict = {
             'name': device['name'],
-            'interface': device['interface'],
             'ip_address': device['ip_address'],  # Ensure this matches your JSON keys
             'port': device['port']
         }
@@ -23,33 +22,6 @@ def get_devices(file_path):
     return device_list
 
 
-def list_nftables_rules():
-    result = subprocess.run(["nft", "list", "ruleset"], capture_output=True, text=True)
-    if result.returncode == 0:
-        print(result.stdout)
-    else:
-        print("Error listing nftables rules:", result.stderr)
-
-def get_chain_rules(rule):
-    # Command to list the rules in the designated rule chain of the inet fw4 table
-    command = ["nft", "list", "chain", "inet", "fw4", rule]
-    
-    # Execute the command and capture the output
-    result = subprocess.run(command, capture_output=True, text=True)
-    
-    # Check if the command was executed successfully
-    if result.returncode == 0:
-        # Split the output into lines
-        lines = result.stdout.split('\n')
-        
-        # Filter out lines that don't start with a rule indicator, like a tab or specific keywords
-        rules = [line.strip() for line in lines if line.strip().startswith("iifname") or line.strip().startswith("jump")]
-        
-        return rules
-    else:
-        print("Error executing nft command:", result.stderr)
-        return []
-
 def setup_tables(devices):
      with open('added_rules.txt', 'w') as file:
         for device in devices:
@@ -57,26 +29,46 @@ def setup_tables(devices):
             addr = device['ip_address']
             port = device['port']
             
-            # Updated rules for redirect (using dstnat for NAT redirection) and drop
-            rules = [
-                (f"dstnat", f"ip protocol tcp ip saddr {addr} tcp dport 0-65535 redirect to :{port}"),
-                (f"dstnat", f"ip protocol tcp ip daddr {addr} tcp dport 0-65535 redirect to :{port}"),
-                (f"forward", f"ip protocol tcp ip saddr {addr} tcp dport 0-65535 drop"),
-                (f"forward", f"ip protocol tcp ip daddr {addr} tcp dport 0-65535 drop")
+            existing_nat = iptc.easy.dump_chain('nat','PREROUTING')
+            existing_filter = iptc.easy.dump_chain('filter','FORWARD')
+
+            if existing_nat and existing_filter:
+                for rule in existing_nat:
+                    iptc.easy.delete_rule('nat','PREROUTING',rule)
+                for rule in existing_filter:
+                    iptc.easy.delete_rule('filter','FORWARD',rule)
+
+
+            os.system("sudo sysctl -w net.ipv4.ip_forward=1")
+            os.system("sysctl -w net.ipv4.conf.all.send_redirects=0")
+
+            redirect_rules = [
+            {
+                'src':addr,'protocol':'tcp','multiport':{'dports': '0:65535'}, 'target': {'REDIRECT': {'to-ports': str(port)}}
+            },
+            # {
+            #     'src':addr1,'protocol':'tcp','multiport':{'dports': '0:65535'}, 'target': {'REDIRECT': {'to-ports': str(port)}}
+            # },
+            {
+                'dst':addr,'protocol':'tcp','multiport':{'dports': '0:65535'}, 'target': {'REDIRECT': {'to-ports': str(port)}}
+            }
+            # ,{
+            #     'dst':addr1,'protocol':'tcp','multiport':{'dports': '0:65535'}, 'target': {'REDIRECT': {'to-ports': str(port)}}
+            # }
+            ]
+            
+            drop_rules = [
+                {'src': addr, 'protocol':'tcp','multiport':{'dports': '0:65535'},'target': 'DROP'},
+                {'dst': addr, 'protocol':'tcp','multiport':{'dports': '0:65535'},'target': 'DROP'}
             ]
 
-            # Insert rules into the appropriate chains of the 'inet fw4' table and save to file
-            for chain, rule in rules:
-                command = f"nft add rule inet fw4 {chain} {rule}"
-                try:
-                    subprocess.run(command, check=True, shell=True)
-                    print(f"Successfully inserted rule: {command}")
-                    # Save the chain and rule to the file
-                    file.write(f"{chain}|{rule}\n")
-                except subprocess.CalledProcessError as e:
-                    print(f"Failed to insert rule: {command}\nError: {e}")
+            for rule in drop_rules:
+                iptc.easy.insert_rule('filter','FORWARD',rule)
+            for rule in redirect_rules:
+                iptc.easy.insert_rule('nat','PREROUTING',rule)
 
-def cleanup_tables():
+# Old function to clean up nftables
+def cleanup_nftables():
     with open('added_rules.txt', 'r') as file:
         lines = file.readlines()
     
@@ -93,10 +85,24 @@ def cleanup_tables():
     # Clear the file after deleting the rules
     open('added_rules.txt', 'w').close()
 
+def get_chain_rules(table_name, chain_name):
+    """
+    Prints out the rules for a specified chain in the specified table using the iptc library.
+    
+    :param table_name: The name of the table (e.g., 'nat', 'filter')
+    :param chain_name: The name of the chain (e.g., 'PREROUTING', 'FORWARD')
+    """
+    table = iptc.Table(table_name)
+    chain = iptc.Chain(table, chain_name)
+    print(f"Rules in {chain_name} chain of the {table_name} table:")
+    for rule in chain.rules:
+        print(f"Rule: {rule.src} -> {rule.dst} {rule.protocol} {rule.target.name}")
+        for match in rule.matches:
+            print(f" Match: {match.name}")
+
+
 
 if __name__ == "__main__":
-    rules = get_chain_rules("PREROUTING")
-    print(rules)
     print('---------------------------------------------')
     print('Getting devices and inserting rules....')
     
@@ -105,5 +111,5 @@ if __name__ == "__main__":
     print('---------------------------------------------')
 
     print('***UPDATED RULES***')
-    inserted_rules = get_chain_rules("prerouting")
-    print(inserted_rules)
+    get_chain_rules('nat', 'PREROUTING')
+    get_chain_rules('filter', 'FORWARD')

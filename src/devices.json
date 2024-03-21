@@ -1,10 +1,27 @@
 {
-    "devices":[
+    "devices": [
         {
-            "name":"ring",
-            "interface": "eth0",
-            "ip_address": "192.168.1.116",
-            "port": 10000
+            "name": "SimpliSafe_BaseStation",
+            "interface": "unknown",
+            "ip_address": "10.3.141.190",
+            "mac_address": "24:6f:28:9b:4a:b8",
+            "expire_time": "1711002037"
+        },
+        {
+            "name": "Arlo-SH1001",
+            "interface": "unknown",
+            "ip_address": "10.3.141.126",
+            "mac_address": "fc:9c:98:5e:f7:19",
+            "expire_time": "1711001051",
+            "client_id": "01:fc:9c:98:5e:f7:19"
+        },
+        {
+            "name": "ring",
+            "interface": "unknown",
+            "ip_address": "10.3.141.106",
+            "mac_address": "b0:09:da:25:18:26",
+            "expire_time": "1711000681",
+            "client_id": "01:b0:09:da:25:18:26"
         }
     ]
 }
