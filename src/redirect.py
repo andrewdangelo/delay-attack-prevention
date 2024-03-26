@@ -103,6 +103,21 @@ def setup_tables(devices, rule_file='added_rules.txt'):
         drop_command = f"sudo iptables -t filter -A FORWARD -p tcp -s {addr} -j DROP"
         run_iptables_command(drop_command, rule_file)
 
+        redirect_rules = [
+            {'src':addr,'protocol':'tcp','multiport':{'dports': '0:65535'}, 'target': {'REDIRECT': {'to-ports': str(port)}}},
+            {'dst':addr,'protocol':'tcp','multiport':{'dports': '0:65535'}, 'target': {'REDIRECT': {'to-ports': str(port)}}}
+        ]
+        
+        drop_rules = [
+            {'src': addr, 'protocol':'tcp','multiport':{'dports': '0:65535'},'target': 'DROP'},
+            {'dst': addr, 'protocol':'tcp','multiport':{'dports': '0:65535'},'target': 'DROP'}
+        ]
+
+        for rule in drop_rules:
+            iptc.easy.insert_rule('filter','FORWARD',rule)
+        for rule in redirect_rules:
+            iptc.easy.insert_rule('nat','PREROUTING',rule)
+
 def cleanup_rules(rule_file='added_rules.txt'):
     with open(rule_file, 'r') as file:
         rules = file.readlines()
