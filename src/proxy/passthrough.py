@@ -93,6 +93,8 @@ class Session(threading.Thread):
             
             # Log the lengths of the records being sent to the address.
             logger.info("record of %s bytes to %s" % (str(lengths), address))
+
+            self.write_to_csv(self.s_addr if dst == "server" else self.d_addr, self.d_addr if dst == "server" else self.s_addr, str(lengths))
             
             # Attempt to read instructions from a file named 'flag.txt'.
             with open('./flag.txt', 'rt+') as flag:
@@ -114,8 +116,7 @@ class Session(threading.Thread):
                         flag.truncate(0)
                         flag.flush()
 
-                        # At the end of the analyze method, after analyzing the message:
-                        self.write_to_csv(self.s_addr if dst == "server" else self.d_addr, self.d_addr if dst == "server" else self.s_addr, str(lengths))
+
 
 
 
