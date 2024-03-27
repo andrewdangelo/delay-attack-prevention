@@ -113,6 +113,10 @@ class Session(threading.Thread):
                         flag.truncate(0)
                         flag.flush()
 
+                        # At the end of the analyze method, after analyzing the message:
+                        self.write_to_csv(self.s_addr if dst == "server" else self.d_addr, self.d_addr if dst == "server" else self.s_addr, str(lengths))
+
+
 
 
     def device_read(self):
@@ -191,6 +195,23 @@ class Session(threading.Thread):
         except Exception as e:
             self.logger.error(e)
             return False
+        
+    def write_to_csv(self, src_ip, dst_ip, byte_size):
+        fieldnames = ['Date', 'Time', 'Src IP', 'Dst IP', 'Byte Size']
+        file_exists = os.path.isfile('traffic_data.csv')
+        with open('traffic_data.csv', 'a', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            if not file_exists:
+                writer.writeheader()  # Only write headers the first time
+            now = time.localtime()
+            writer.writerow({
+                'Date': time.strftime('%Y-%m-%d', now),
+                'Time': time.strftime('%H:%M:%S', now),
+                'Src IP': src_ip,
+                'Dst IP': dst_ip,
+                'Byte Size': byte_size
+            })
+
 
 
 if __name__ == "__main__":
