@@ -100,29 +100,21 @@ class Session(threading.Thread):
             with open('./flag.txt', 'rt+') as flag:
                 instruct = flag.read()
                 if len(instruct) > 0:
-                    # Split the instruction by the semi-colon to separate the IP address.
-                    ip_address, instructions = instruct.split(';')
-                    # Extract the length range and delay from the instructions.
-                    length_range, delay = instructions.split(' ')[0:2]
+                    # If instructions exist, parse them for a length range and a delay value.
+                    length_range, delay = instruct.split(' ')[0:2]
                     minimal, maximal = map(int, length_range.split(','))
-
-                    # Determine the current message's IP address based on direction.
-                    current_ip = self.s_addr if dst == "server" else self.d_addr
-
-                    # Proceed only if the IP address from the file matches the current message's IP.
-                    if ip_address == current_ip:
-                        # Check if any of the TLS record lengths fall within the specified range.
-                        if self.in_range((minimal, maximal), lengths):
-                            # If so, depending on the destination, add the delay to the appropriate queue.
-                            if dst == "server":
-                                self.device_q.put(int(delay))
-                            else:
-                                self.server_q.put(int(delay))
-
-                            # Clear the instructions from the file to prevent repeated processing.
-                            flag.seek(0)  # Move to the start of the file before truncating
-                            flag.truncate()
-                            flag.flush()
+                    
+                    # Check if any of the TLS record lengths fall within the specified range.
+                    if self.in_range((minimal, maximal), lengths):
+                        # If so, depending on the destination, add the delay to the appropriate queue.
+                        if dst == "server":
+                            self.device_q.put(int(delay))
+                        else:
+                            self.server_q.put(int(delay))
+                            
+                        # Clear the instructions from the file to prevent repeated processing.
+                        flag.truncate(0)
+                        flag.flush()
 
 
 
