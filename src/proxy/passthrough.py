@@ -6,6 +6,7 @@ from queue import Queue
 import sys
 from util import *
 from TLSRecon import TLSType
+import csv
 
 
 
