@@ -5,9 +5,9 @@ def TLSType(datagram):
     type_list = []
     try:
         records, bytes_used = dpkt.ssl.tls_multi_factory(datagram)
-        print('------------------START OF RECORD---------------------')
+        """ print('------------------START OF RECORD---------------------')
         print(records)
-        print('------------------END OF RECORD---------------------')
+        print('------------------END OF RECORD---------------------') """
         for record in records:
             record_type = pretty_name('tls_record', record.type)
             length = record.length
