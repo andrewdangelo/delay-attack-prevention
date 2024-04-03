@@ -112,7 +112,7 @@ class Session(threading.Thread):
                     if self.in_range((minimal, maximal), lengths):
                         
                         # If so, depending on the destination, add the delay to the appropriate queue.
-                        if (dst == "server" and ip_address == self.s_addr):
+                        if dst == "server" and ip_address:
                             self.device_q.put(int(delay))
                         else:
                             self.server_q.put(int(delay))
