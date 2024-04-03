@@ -1,14 +1,6 @@
 {
     "devices": [
         {
-            "name": "SimpliSafe_BaseStation",
-            "interface": "unknown",
-            "ip_address": "10.3.141.190",
-            "mac_address": "24:6f:28:9b:4a:b8",
-            "expire_time": "1711002037",
-            "port": 10000
-        },
-        {
             "name": "Arlo-SH1001",
             "interface": "unknown",
             "ip_address": "10.3.141.126",
@@ -24,6 +16,23 @@
             "mac_address": "b0:09:da:25:18:26",
             "expire_time": "1711000681",
             "client_id": "01:b0:09:da:25:18:26",
+            "port": 10000
+        },
+        {
+            "name": "smartthings",
+            "interface": "unknown",
+            "ip_address": "10.3.141.228",
+            "mac_address": "28:6d:97:a3:dd:95",
+            "expire_time": "1711002037",
+            "port": 10000
+        },
+        {
+            "name": "August",
+            "interface": "unknown",
+            "ip_address": "10.3.141.107",
+            "mac_address": "b8:b7:f1:b8:84:8e",
+            "expire_time": "1711001051",
+            "client_id": "01:fc:9c:98:5e:f7:19",
             "port": 10000
         }
     ]
