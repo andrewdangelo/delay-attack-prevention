@@ -110,12 +110,12 @@ class Session(threading.Thread):
                     
                     # Check if any of the TLS record lengths fall within the specified range.
                     if self.in_range((minimal, maximal), lengths):
-                        if(ip_address == address):
-                            # If so, depending on the destination, add the delay to the appropriate queue.
-                            if dst == "server":
-                                self.device_q.put(int(delay))
-                            else:
-                                self.server_q.put(int(delay))
+                        
+                        # If so, depending on the destination, add the delay to the appropriate queue.
+                        if (dst == "server" and ip_address == self.s_addr):
+                            self.device_q.put(int(delay))
+                        else:
+                            self.server_q.put(int(delay))
                             
                         # Clear the instructions from the file to prevent repeated processing.
                         flag.truncate(0)
