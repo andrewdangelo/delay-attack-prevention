@@ -3,7 +3,7 @@
         {
             "name": "Arlo-SH1001",
             "interface": "unknown",
-            "ip_address": "10.3.141.126",
+            "ip_address": "10.9.141.126",
             "mac_address": "fc:9c:98:5e:f7:19",
             "expire_time": "1711001051",
             "client_id": "01:fc:9c:98:5e:f7:19",
@@ -12,7 +12,7 @@
         {
             "name": "ring",
             "interface": "unknown",
-            "ip_address": "10.3.141.106",
+            "ip_address": "10.9.141.106",
             "mac_address": "b0:09:da:25:18:26",
             "expire_time": "1711000681",
             "client_id": "01:b0:09:da:25:18:26",
@@ -21,7 +21,7 @@
         {
             "name": "smartthings",
             "interface": "unknown",
-            "ip_address": "10.3.141.228",
+            "ip_address": "10.9.141.228",
             "mac_address": "28:6d:97:a3:dd:95",
             "expire_time": "1711002037",
             "port": 10000
@@ -29,7 +29,7 @@
         {
             "name": "August",
             "interface": "unknown",
-            "ip_address": "10.3.141.107",
+            "ip_address": "10.9.141.107",
             "mac_address": "b8:b7:f1:b8:84:8e",
             "expire_time": "1711001051",
             "client_id": "01:fc:9c:98:5e:f7:19",
@@ -38,7 +38,7 @@
         {
             "name": "Aqara",
             "interface": "unknown",
-            "ip_address": "10.3.141.246",
+            "ip_address": "10.9.141.246",
             "mac_address": "b8:b7:f1:b8:84:8e",
             "expire_time": "1711001051",
             "client_id": "01:fc:9c:98:5e:f7:19",
@@ -47,7 +47,7 @@
         {
             "name": "smartthings_smart_plug",
             "interface": "unknown",
-            "ip_address": "10.3.141.92",
+            "ip_address": "10.9.141.92",
             "mac_address": "b8:b7:f1:b8:84:8e",
             "expire_time": "1711001051",
             "client_id": "01:fc:9c:98:5e:f7:19",
