@@ -53,9 +53,11 @@ class Session(threading.Thread):
     def analyze_hk(self,msg,dst):
         if dst == "server":
             address = self.s_addr
+            other_address = self.d_addr
         else:
             address = self.d_addr
-        logger.info("%d bytes to %s"%(len(msg),address))
+            other_address =  self.s_addr
+        logger.info("%d bytes to %s from %s"%(len(msg),address, other_address))
         with open('./flag.txt','rt+') as flag:
                 instruct = flag.read()
                 length = len(msg)
