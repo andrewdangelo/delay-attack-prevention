@@ -135,7 +135,7 @@ class Session(threading.Thread):
                 self.device_q.put('')
                 break
             if len(msg_f_d) > 0:
-                self.analyze(msg_f_d,"server")
+                self.analyze_hk(msg_f_d,"server")
                 self.device_q.put(msg_f_d)
             else:
                 self.termination.put(True)
@@ -169,7 +169,7 @@ class Session(threading.Thread):
                 self.server_q.put('')
                 break
             if len(msg_f_s):
-                self.analyze(msg_f_s,"device")
+                self.analyze_hk(msg_f_s,"device")
                 self.server_q.put(msg_f_s)
             else:
                 self.termination.put(True)
