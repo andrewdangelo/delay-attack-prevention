@@ -21,7 +21,6 @@ class Session(threading.Thread):
         self.server_q = Queue()
         self.device_q = Queue()
         self.s_addr = original_addr(d_sock)
-        self.reconnect_requested = False
         self.logger = logger
 
     def run(self):
@@ -223,18 +222,20 @@ class Session(threading.Thread):
             })
 
 
-    def resetConnection(self, duration=30):
+    def resetConnection(self, duration=30):  # Default duration can be overridden
         self.logger.info(f"Initiating connection reset for {self.d_addr[0]}")
         try:
             self.d_sock.close()
             self.logger.info(f"Connection to {self.d_addr[0]} has been closed.")
-            time.sleep(duration)  # Ensures a delay before allowing reconnection
-            self.reconnect_requested = True  # Flags this session for potential reconnection
-            self.logger.info(f"Ready to reconnect to {self.d_addr[0]} after waiting.")
+            time.sleep(duration)
+            self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.d_sock.connect(self.d_addr[0])
+            #d_sock, d_addr = listen_sock.accept()
+            #session_thread = Session(d_addr[0],d_sock,logger)
+            #session_thread.start()
+            self.logger.info(f"Connection to {self.d_addr[0]} successfully re-established.")
         except Exception as e:
             self.logger.error(f"Failed to reset connection: {e}")
-            self.reconnect_requested = False
-
 
 
 
@@ -248,8 +249,7 @@ def cli_interface(session_threads):
             found = False
             print(f"Looking for session with IP: {ip}")
             for session in session_threads:
-                # Ensure the IP comparison logs what is actually being compared
-                print(f"Checking session with device IP: {session.d_addr[0]} against {ip}")
+                print(f"Checking session with device IP: {session.d_addr[0]}")
                 if session.d_addr[0] == ip:
                     print(f"Initiating reset for session with IP {ip}")
                     threading.Thread(target=session.resetConnection).start()
@@ -257,7 +257,6 @@ def cli_interface(session_threads):
                     break
             if not found:
                 print(f"No active session with IP {ip} found.")
-
 
 
 
@@ -301,29 +300,10 @@ if __name__ == "__main__":
         listen_sock.listen()
 
         logger.info("start listening at port %d"%(args.port))
-        session_threads = []
         while True:
             try:
                 d_sock, d_addr = listen_sock.accept()
-                existing_session = next((s for s in session_threads if s.d_addr == d_addr and s.reconnect_requested), None)
-                if existing_session:
-                    existing_session.d_sock = d_sock  # Update the socket
-                    existing_session.reconnect_requested = False
-                    existing_session.logger.info(f"Reconnected with {d_addr}")
-                else:
-                    session_thread = Session(d_addr, d_sock, logger)
-                    session_threads.append(session_thread)
-                    session_thread.start()
-            except KeyboardInterrupt:
-                for session in session_threads:
-                    session.termination.put(True)
-                listen_sock.close()
-                break
-
-
-
-
-"""                 session_thread = Session(d_addr,d_sock,logger)
+                session_thread = Session(d_addr,d_sock,logger)
                 session_threads.append(session_thread)
                 session_thread.start()
                 
@@ -333,4 +313,3 @@ if __name__ == "__main__":
                 listen_sock.close()
                 del listen_sock
                 sys.exit()
- """
