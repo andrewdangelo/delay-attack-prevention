@@ -300,15 +300,14 @@ if __name__ == "__main__":
         listen_sock.listen()
 
         logger.info("start listening at port %d"%(args.port))
+
         while True:
             try:
+                print("Start new: " + d_addr[0])
                 d_sock, d_addr = listen_sock.accept()
                 session_thread = Session(d_addr,d_sock,logger)
                 session_threads.append(session_thread)
                 session_thread.start()
-
-                for sessions in session_threads:
-                    print(sessions.d_addr)
                 
             except KeyboardInterrupt:
                 for session in session_threads:
