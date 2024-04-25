@@ -254,7 +254,7 @@ def cli_interface(session_threads):
                     print(f"Initiating reset for session with IP {ip}")
                     threading.Thread(target=session.resetConnection).start()
                     found = True
-                    break
+            
             if not found:
                 print(f"No active session with IP {ip} found.")
 
