@@ -225,12 +225,15 @@ class Session(threading.Thread):
     def resetConnection(self, duration=30):  # Default duration can be overridden
         self.logger.info(f"Initiating connection reset for {self.s_addr}")
         try:
-            self.d_sock.close()
-            self.logger.info(f"Connection to {self.d_addr} has been closed.")
+            self.s_sock.close()
+            self.logger.info(f"Connection to {self.s_addr} has been closed.")
             time.sleep(duration)
-            self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.d_sock.connect(self.d_addr)
-            self.logger.info(f"Connection to {self.d_addr} successfully re-established.")
+            #self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            #self.d_sock.connect(self.d_addr)
+            s_sock, s_addr = listen_sock.accept()
+            session_thread = Session(s_addr,s_sock,logger)
+            session_thread.start()
+            self.logger.info(f"Connection to {self.s_addr} successfully re-established.")
         except Exception as e:
             self.logger.error(f"Failed to reset connection: {e}")
 
