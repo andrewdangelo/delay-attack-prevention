@@ -20,8 +20,6 @@ class Session(threading.Thread):
         self.termination = Queue()
         self.server_q = Queue()
         self.device_q = Queue()
-        self.reset = Queue()
-        self.reset_flag = False
         self.s_addr = original_addr(d_sock)
         self.logger = logger
 
@@ -228,17 +226,14 @@ class Session(threading.Thread):
         self.logger.info(f"Initiating connection reset for {self.d_addr}")
         try:
             self.termination.put(True)
+            self.logger.info(f"Connection to {self.d_addr} has been closed.")
             time.sleep(duration)
-            #self.d_sock.close()
-            #self.s_sock.close()
-            #self.logger.info(f"Connection to {self.d_addr} has been closed.")
-            #time.sleep(duration)
-            #self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            #self.d_sock.connect(self.d_addr)
+            self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.d_sock.connect(self.d_addr)
             #d_sock, d_addr = listen_sock.accept()
             #session_thread = Session(d_addr[0],d_sock,logger)
             #session_thread.start()
-            #self.logger.info(f"Connection to {self.d_addr} successfully re-established.")
+            self.logger.info(f"Connection to {self.d_addr} successfully re-established.")
         except Exception as e:
             self.logger.error(f"Failed to reset connection: {e}")
 
