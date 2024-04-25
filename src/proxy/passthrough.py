@@ -222,6 +222,35 @@ class Session(threading.Thread):
             })
 
 
+    def resetConnection(self):
+        try:
+            # Read IP and duration from a file
+            with open('reset_info.txt', 'r') as file:
+                content = file.read().strip().split(';')
+                ip_to_reset = content[0]
+                duration = int(content[1])
+
+            # Check if the current session's destination IP matches the IP to reset
+            if self.d_addr[0] == ip_to_reset:
+                self.logger.info(f"Resetting connection to {ip_to_reset} for {duration} seconds.")
+
+                # Closing the current socket connection
+                self.d_sock.close()
+
+                # Wait for the specified duration
+                time.sleep(duration)
+
+                # Attempt to reconnect
+                self.logger.info(f"Re-establishing connection to {ip_to_reset}.")
+                self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.d_sock.connect(self.d_addr)
+
+                self.logger.info(f"Connection to {ip_to_reset} re-established.")
+
+        except Exception as e:
+            self.logger.error(f"Failed to reset connection: {str(e)}")
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Transparent proxy for TLS sessions')
