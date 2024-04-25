@@ -251,12 +251,30 @@ class Session(threading.Thread):
             self.logger.error(f"Failed to reset connection: {str(e)}")
 
 
+def cli_interface(session_threads):
+    while True:
+        cmd = input("Enter command (e.g., reset <ip>): ")
+        if cmd.startswith("reset "):
+            ip = cmd.split(" ")[1]
+            # Find the session with the matching IP and reset it
+            for session in session_threads:
+                if session.d_addr[0] == ip:
+                    threading.Thread(target=session.resetConnection).start()
+                    break
+            else:
+                print(f"No active session with IP {ip} found.")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Transparent proxy for TLS sessions')
     parser.add_argument('-v', '--verbose', action='store_true', default=False)
     parser.add_argument('-p', '--port',type=int, default=10000, metavar='P',help= 'port to listen')
     args = parser.parse_args()
+
+    session_threads = []
+    # Starting the CLI in a separate thread
+    cli_thread = threading.Thread(target=cli_interface, args=(session_threads,), daemon=True)
+    cli_thread.start()
 
     #logger = logging.getLogger('logger')
     #sh = logging.StreamHandler(stream=None)
@@ -295,8 +313,12 @@ if __name__ == "__main__":
             try:
                 d_sock, d_addr = listen_sock.accept()
                 session_thread = Session(d_addr,d_sock,logger)
+                session_threads.append(session_thread)
                 session_thread.start()
+                
             except KeyboardInterrupt:
+                for session in session_threads:
+                    session.termination.put(True)
                 listen_sock.close()
                 del listen_sock
                 sys.exit()
