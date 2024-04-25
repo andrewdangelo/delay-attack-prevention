@@ -226,6 +226,7 @@ class Session(threading.Thread):
         self.logger.info(f"Initiating connection reset for {self.d_addr}")
         try:
             self.d_sock.close()
+            self.s_sock.close()
             self.logger.info(f"Connection to {self.d_addr} has been closed.")
             time.sleep(duration)
             self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
