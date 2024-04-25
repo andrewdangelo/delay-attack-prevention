@@ -248,7 +248,8 @@ def cli_interface(session_threads):
             found = False
             print(f"Looking for session with IP: {ip}")
             for session in session_threads:
-                print(f"Checking session with device IP: {session.d_addr[0]}")
+                # Ensure the IP comparison logs what is actually being compared
+                print(f"Checking session with device IP: {session.d_addr[0]} against {ip}")
                 if session.d_addr[0] == ip:
                     print(f"Initiating reset for session with IP {ip}")
                     threading.Thread(target=session.resetConnection).start()
@@ -256,6 +257,7 @@ def cli_interface(session_threads):
                     break
             if not found:
                 print(f"No active session with IP {ip} found.")
+
 
 
 
