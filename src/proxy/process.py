@@ -224,17 +224,17 @@ class Session(threading.Thread):
 
 
     def resetConnection(self, duration=30):
-            """ Reset the connection after a specified delay """
-            try:
-                self.logger.info(f"Closing connection to {self.d_addr[0]}...")
-                self.d_sock.close()  # Close the socket
-                self.logger.info(f"Connection to {self.d_addr[0]} has been closed.")
-                time.sleep(duration)  # Wait for the specified duration
-                self.reconnect_requested = True  # Set the flag to request a reconnect
-                self.logger.info(f"Reconnection flagged for {self.d_addr[0]} after {duration} seconds.")
-            except Exception as e:
-                self.logger.error(f"Failed to reset connection: {e}")
-                self.reconnect_requested = False
+        self.logger.info(f"Initiating connection reset for {self.d_addr[0]}")
+        try:
+            self.d_sock.close()
+            self.logger.info(f"Connection to {self.d_addr[0]} has been closed.")
+            time.sleep(duration)  # Ensures a delay before allowing reconnection
+            self.reconnect_requested = True  # Flags this session for potential reconnection
+            self.logger.info(f"Ready to reconnect to {self.d_addr[0]} after waiting.")
+        except Exception as e:
+            self.logger.error(f"Failed to reset connection: {e}")
+            self.reconnect_requested = False
+
 
 
 
@@ -299,23 +299,23 @@ if __name__ == "__main__":
         listen_sock.listen()
 
         logger.info("start listening at port %d"%(args.port))
+        session_threads = []
         while True:
             try:
                 d_sock, d_addr = listen_sock.accept()
-                
                 existing_session = next((s for s in session_threads if s.d_addr == d_addr and s.reconnect_requested), None)
                 if existing_session:
+                    existing_session.d_sock = d_sock  # Update the socket
                     existing_session.reconnect_requested = False
-                    existing_session.d_sock = d_sock  # Update the socket in existing session
-                    logger.info(f"Reconnected with {d_addr}")
+                    existing_session.logger.info(f"Reconnected with {d_addr}")
                 else:
-                    # Create a new session if no reconnection was requested
                     session_thread = Session(d_addr, d_sock, logger)
                     session_threads.append(session_thread)
                     session_thread.start()
             except KeyboardInterrupt:
                 for session in session_threads:
                     session.termination.put(True)
+                listen_sock.close()
                 break
 
 
