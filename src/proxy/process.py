@@ -223,14 +223,14 @@ class Session(threading.Thread):
 
 
     def resetConnection(self, duration=30):  # Default duration can be overridden
-        self.logger.info(f"Initiating connection reset for {self.d_addr[0]}")
+        self.logger.info(f"Initiating connection reset for {self.s_addr}")
         try:
             self.d_sock.close()
-            self.logger.info(f"Connection to {self.d_addr[0]} has been closed.")
+            self.logger.info(f"Connection to {self.d_addr} has been closed.")
             time.sleep(duration)
             self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.d_sock.connect(self.d_addr)
-            self.logger.info(f"Connection to {self.d_addr[0]} successfully re-established.")
+            self.logger.info(f"Connection to {self.d_addr} successfully re-established.")
         except Exception as e:
             self.logger.error(f"Failed to reset connection: {e}")
 
@@ -247,7 +247,7 @@ def cli_interface(session_threads):
             print(f"Looking for session with IP: {ip}")
             for session in session_threads:
                 print(f"Checking session with device IP: {session.d_addr}")
-                if session.d_addr[0] == ip:
+                if session.d_addr == ip:
                     print(f"Initiating reset for session with IP {ip}")
                     threading.Thread(target=session.resetConnection).start()
                     found = True
