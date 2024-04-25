@@ -222,40 +222,31 @@ class Session(threading.Thread):
             })
 
 
-    def resetConnection(self):
-        # Log the intent to reset the connection
-        self.logger.info(f"Initiating connection reset for {self.s_addr}")
-
-        # Safely close the device socket
+    def resetConnection(self, duration=30):  # Default duration can be overridden
+        self.logger.info(f"Initiating connection reset for {self.d_addr[0]}")
         try:
-            self.s_sock.close()
-            self.logger.info(f"Connection to {self.s_addr} has been closed.")
+            self.d_sock.close()
+            self.logger.info(f"Connection to {self.d_addr[0]} has been closed.")
+            time.sleep(duration)
+            self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.d_sock.connect(self.d_addr)
+            self.logger.info(f"Connection to {self.d_addr[0]} successfully re-established.")
         except Exception as e:
-            self.logger.error(f"Error closing the device socket: {e}")
+            self.logger.error(f"Failed to reset connection: {e}")
 
-        # Wait for the specified duration before reconnecting
-        # Assume duration is stored in some configuration or passed when the reset is initiated
-        duration = 30
-        self.logger.info(f"Waiting for {duration} seconds before reconnecting...")
-        time.sleep(duration)
-
-        # Attempt to re-establish the connection
-        try:
-            self.s_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.s_sock.connect(self.s_addr)
-            self.logger.info(f"Connection to {self.s_addr} successfully re-established.")
-        except Exception as e:
-            self.logger.error(f"Failed to reconnect to {self.s_addr}: {e}")
-            self.s_sock = None  # Ensure the socket is marked as disconnected
 
 
 def cli_interface(session_threads):
+    print("CLI interface is now active. Waiting for commands...")
     while True:
         cmd = input("Enter command (e.g., reset <ip>): ")
+        print(f"Command received: {cmd}")
         if cmd.startswith("reset "):
             ip = cmd.split(" ")[1]
             found = False
+            print(f"Looking for session with IP: {ip}")
             for session in session_threads:
+                print(f"Checking session with device IP: {session.d_addr}")
                 if session.d_addr[0] == ip:
                     print(f"Initiating reset for session with IP {ip}")
                     threading.Thread(target=session.resetConnection).start()
@@ -263,6 +254,7 @@ def cli_interface(session_threads):
                     break
             if not found:
                 print(f"No active session with IP {ip} found.")
+
 
 
 
