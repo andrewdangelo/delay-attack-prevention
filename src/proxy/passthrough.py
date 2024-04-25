@@ -259,6 +259,7 @@ def cli_interface(session_threads):
             # Find the session with the matching IP and reset it
             for session in session_threads:
                 if session.d_addr[0] == ip:
+                    print("Restarting connection" + session)
                     threading.Thread(target=session.resetConnection).start()
                     break
             else:
