@@ -223,32 +223,30 @@ class Session(threading.Thread):
 
 
     def resetConnection(self):
+        # Log the intent to reset the connection
+        self.logger.info(f"Initiating connection reset for {self.d_addr}")
+
+        # Safely close the device socket
         try:
-            # Read IP and duration from a file
-            with open('reset_info.txt', 'r') as file:
-                content = file.read().strip().split(';')
-                ip_to_reset = content[0]
-                duration = int(content[1])
-
-            # Check if the current session's destination IP matches the IP to reset
-            if self.d_addr[0] == ip_to_reset:
-                self.logger.info(f"Resetting connection to {ip_to_reset} for {duration} seconds.")
-
-                # Closing the current socket connection
-                self.d_sock.close()
-
-                # Wait for the specified duration
-                time.sleep(duration)
-
-                # Attempt to reconnect
-                self.logger.info(f"Re-establishing connection to {ip_to_reset}.")
-                self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.d_sock.connect(self.d_addr)
-
-                self.logger.info(f"Connection to {ip_to_reset} re-established.")
-
+            self.d_sock.close()
+            self.logger.info(f"Connection to {self.d_addr} has been closed.")
         except Exception as e:
-            self.logger.error(f"Failed to reset connection: {str(e)}")
+            self.logger.error(f"Error closing the device socket: {e}")
+
+        # Wait for the specified duration before reconnecting
+        # Assume duration is stored in some configuration or passed when the reset is initiated
+        duration = 30
+        self.logger.info(f"Waiting for {duration} seconds before reconnecting...")
+        time.sleep(duration)
+
+        # Attempt to re-establish the connection
+        try:
+            self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.d_sock.connect(self.d_addr)
+            self.logger.info(f"Connection to {self.d_addr} successfully re-established.")
+        except Exception as e:
+            self.logger.error(f"Failed to reconnect to {self.d_addr}: {e}")
+            self.d_sock = None  # Ensure the socket is marked as disconnected
 
 
 def cli_interface(session_threads):
