@@ -306,6 +306,8 @@ if __name__ == "__main__":
                 session_thread = Session(d_addr,d_sock,logger)
                 session_threads.append(session_thread)
                 session_thread.start()
+
+                print(session_threads)
                 
             except KeyboardInterrupt:
                 for session in session_threads:
