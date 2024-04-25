@@ -216,8 +216,8 @@ class Session(threading.Thread):
             writer.writerow({
                 'Date': time.strftime('%Y-%m-%d', now),
                 'Time': time.strftime('%H:%M:%S', now),
-                'Src IP': src_ip,
-                'Dst IP': dst_ip,
+                'DST IP': src_ip,
+                'SRC IP': dst_ip,
                 'Byte Size': byte_size
             })
 
@@ -269,11 +269,6 @@ if __name__ == "__main__":
     cli_thread = threading.Thread(target=cli_interface, args=(session_threads,), daemon=True)
     cli_thread.start()
 
-    #logger = logging.getLogger('logger')
-    #sh = logging.StreamHandler(stream=None)
-    #formatter = logging.Formatter('%(asctime)s | %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-    #sh.setFormatter(formatter)
-    #logger.addHandler(sh)
 
     logger = logging.getLogger('TLSLogger')
     formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
