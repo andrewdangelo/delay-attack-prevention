@@ -53,9 +53,11 @@ class Session(threading.Thread):
     def analyze_hk(self,msg,dst):
         if dst == "server":
             address = self.s_addr
+            other_address = self.d_addr
         else:
             address = self.d_addr
-        logger.info("%d bytes to %s"%(len(msg),address))
+            other_address =  self.s_addr
+        logger.info("%d bytes to %s from %s"%(len(msg),address, other_address))
         with open('./flag.txt','rt+') as flag:
                 instruct = flag.read()
                 length = len(msg)
@@ -110,12 +112,12 @@ class Session(threading.Thread):
                     
                     # Check if any of the TLS record lengths fall within the specified range.
                     if self.in_range((minimal, maximal), lengths):
-                        if(ip_address == address):
-                            # If so, depending on the destination, add the delay to the appropriate queue.
-                            if dst == "server":
-                                self.device_q.put(int(delay))
-                            else:
-                                self.server_q.put(int(delay))
+                        
+                        # If so, depending on the destination, add the delay to the appropriate queue.
+                        if dst == "server" and ip_address:
+                            self.device_q.put(int(delay))
+                        else:
+                            self.server_q.put(int(delay))
                             
                         # Clear the instructions from the file to prevent repeated processing.
                         flag.truncate(0)
@@ -135,7 +137,7 @@ class Session(threading.Thread):
                 self.device_q.put('')
                 break
             if len(msg_f_d) > 0:
-                self.analyze(msg_f_d,"server")
+                self.analyze_hk(msg_f_d,"server")
                 self.device_q.put(msg_f_d)
             else:
                 self.termination.put(True)
@@ -169,7 +171,7 @@ class Session(threading.Thread):
                 self.server_q.put('')
                 break
             if len(msg_f_s):
-                self.analyze(msg_f_s,"device")
+                self.analyze_hk(msg_f_s,"device")
                 self.server_q.put(msg_f_s)
             else:
                 self.termination.put(True)
@@ -220,12 +222,60 @@ class Session(threading.Thread):
             })
 
 
+    def resetConnection(self):
+        # Log the intent to reset the connection
+        self.logger.info(f"Initiating connection reset for {self.s_addr}")
+
+        # Safely close the device socket
+        try:
+            self.s_sock.close()
+            self.logger.info(f"Connection to {self.s_addr} has been closed.")
+        except Exception as e:
+            self.logger.error(f"Error closing the device socket: {e}")
+
+        # Wait for the specified duration before reconnecting
+        # Assume duration is stored in some configuration or passed when the reset is initiated
+        duration = 30
+        self.logger.info(f"Waiting for {duration} seconds before reconnecting...")
+        time.sleep(duration)
+
+        # Attempt to re-establish the connection
+        try:
+            self.s_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.s_sock.connect(self.s_addr)
+            self.logger.info(f"Connection to {self.s_addr} successfully re-established.")
+        except Exception as e:
+            self.logger.error(f"Failed to reconnect to {self.s_addr}: {e}")
+            self.s_sock = None  # Ensure the socket is marked as disconnected
+
+
+def cli_interface(session_threads):
+    while True:
+        cmd = input("Enter command (e.g., reset <ip>): ")
+        if cmd.startswith("reset "):
+            ip = cmd.split(" ")[1]
+            found = False
+            for session in session_threads:
+                if session.d_addr[0] == ip:
+                    print(f"Initiating reset for session with IP {ip}")
+                    threading.Thread(target=session.resetConnection).start()
+                    found = True
+                    break
+            if not found:
+                print(f"No active session with IP {ip} found.")
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Transparent proxy for TLS sessions')
     parser.add_argument('-v', '--verbose', action='store_true', default=False)
     parser.add_argument('-p', '--port',type=int, default=10000, metavar='P',help= 'port to listen')
     args = parser.parse_args()
+
+    session_threads = []
+    # Starting the CLI in a separate thread
+    cli_thread = threading.Thread(target=cli_interface, args=(session_threads,), daemon=True)
+    cli_thread.start()
 
     #logger = logging.getLogger('logger')
     #sh = logging.StreamHandler(stream=None)
@@ -264,9 +314,12 @@ if __name__ == "__main__":
             try:
                 d_sock, d_addr = listen_sock.accept()
                 session_thread = Session(d_addr,d_sock,logger)
+                session_threads.append(session_thread)
                 session_thread.start()
+                
             except KeyboardInterrupt:
+                for session in session_threads:
+                    session.termination.put(True)
                 listen_sock.close()
                 del listen_sock
                 sys.exit()
-                
