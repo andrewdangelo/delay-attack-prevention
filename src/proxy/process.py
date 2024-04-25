@@ -308,7 +308,7 @@ if __name__ == "__main__":
                 session_thread.start()
 
                 for sessions in session_threads:
-                    print("Session addresses: " + sessions.d_address)
+                    print("Session addresses: " + sessions.d_addr)
                 
             except KeyboardInterrupt:
                 for session in session_threads:
