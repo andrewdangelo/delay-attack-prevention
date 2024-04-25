@@ -313,14 +313,14 @@ if __name__ == "__main__":
                                 print("Terminating connection: " + ip_address)
                                 session.termination.put(True)
 
-                # Listens for an incoming socket connection on port 10000.
-                d_sock, d_addr = listen_sock.accept()
+                    # Listens for an incoming socket connection on port 10000.
+                    d_sock, d_addr = listen_sock.accept()
 
-                #Establishes a new socket connection with the d_sock and d_addr
-                session_thread = Session(d_addr,d_sock,logger)
-                print("Start new: " + d_addr[0])
-                session_threads.append(session_thread)
-                session_thread.start()
+                    #Establishes a new socket connection with the d_sock and d_addr
+                    session_thread = Session(d_addr,d_sock,logger)
+                    print("Start new: " + d_addr[0])
+                    session_threads.append(session_thread)
+                    session_thread.start()
                 
             except KeyboardInterrupt:
                 for session in session_threads:
