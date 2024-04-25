@@ -7,6 +7,8 @@ import sys
 from util import *
 from TLSRecon import TLSType
 import csv
+import tkinter as tk
+from tkinter import scrolledtext
 
 
 
@@ -255,14 +257,73 @@ def cli_interface(session_threads):
             if not found:
                 print(f"No active session with IP {ip} found.")
 
+class GuiApplication:
+    def __init__(self, master):
+        self.master = master
+        master.title("Network Session Manager")
+
+        # Text widget for logs with a scrollbar
+        self.log_area = scrolledtext.ScrolledText(master, width=70, height=20, state='disabled')
+        self.log_area.grid(row=0, column=0, padx=10, pady=10)
+
+        # Entry widget for commands
+        self.command_entry = tk.Entry(master, width=70)
+        self.command_entry.grid(row=1, column=0, sticky='ew', padx=10)
+        self.command_entry.bind("<Return>", self.execute_command)
+
+        # Queue to handle logs safely across threads
+        self.log_queue = queue.Queue()
+        self.update_logs()
+
+    def log_message(self, message):
+        self.log_queue.put(message)
+
+    def update_logs(self):
+        while not self.log_queue.empty():
+            message = self.log_queue.get()
+            self.log_area.config(state='normal')
+            self.log_area.insert(tk.END, message + '\n')
+            self.log_area.config(state='disabled')
+            self.log_area.yview(tk.END)
+        # Schedule the log update
+        self.master.after(100, self.update_logs)
+
+    def execute_command(self, event):
+        cmd = self.command_entry.get()
+        self.log_message(f"Executing command: {cmd}")
+        # Add command handling logic here
+        self.command_entry.delete(0, tk.END)
+
+def run_gui():
+    root = tk.Tk()
+    app = GuiApplication(root)
+    root.mainloop()
 
 
+def setup_logging(gui_app):
+    class GuiLoggerHandler(logging.Handler):
+        def emit(self, record):
+            log_entry = self.format(record)
+            gui_app.log_message(log_entry)
+
+    gui_logger_handler = GuiLoggerHandler()
+    gui_logger_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logging.getLogger().addHandler(gui_logger_handler)
+    logging.getLogger().setLevel(logging.INFO)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Transparent proxy for TLS sessions')
     parser.add_argument('-v', '--verbose', action='store_true', default=False)
     parser.add_argument('-p', '--port',type=int, default=10000, metavar='P',help= 'port to listen')
     args = parser.parse_args()
+
+    gui_thread = threading.Thread(target=run_gui)
+    gui_thread.start()
+
+    root = tk.Tk()
+    gui_app = GuiApplication(root)
+    threading.Thread(target=root.mainloop, daemon=True).start()
+    setup_logging(gui_app)
 
     session_threads = []
     # Starting the CLI in a separate thread
@@ -315,3 +376,4 @@ if __name__ == "__main__":
                 listen_sock.close()
                 del listen_sock
                 sys.exit()
+
