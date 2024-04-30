@@ -221,7 +221,7 @@ class Session(threading.Thread):
                 'Byte Size': byte_size
             })
 
-
+    #NOT NECESSARY
     def resetConnection(self, duration=30):  # Default duration can be overridden
         self.logger.info(f"Initiating connection reset for {self.d_addr}")
         try:
@@ -316,6 +316,11 @@ if __name__ == "__main__":
                         # Listens for an incoming socket connection on port 10000.
                         d_sock, d_addr = listen_sock.accept()
 
+                        #Need conditional verification to check the s_addr.
+                        #Need to initiate an async timer instead of sleep.
+                        #Check timer and address 
+
+                        #Wrap the session statements in an else statement
                         #Establishes a new socket connection with the d_sock and d_addr
                         session_thread = Session(d_addr,d_sock,logger)
                         print("Start new: " + d_addr[0])
@@ -328,3 +333,5 @@ if __name__ == "__main__":
                 listen_sock.close()
                 del listen_sock
                 sys.exit()
+
+#1. When we 
