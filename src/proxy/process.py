@@ -8,12 +8,30 @@ from util import *
 from TLSRecon import TLSType
 import csv
 
-
-
-
-
 class Session(threading.Thread):
-    def __init__(self,d_addr,d_sock,logger):
+    """
+    Represents a session between a client and a server.
+
+    Attributes:
+    - d_addr: The address of the destination server.
+    - d_sock: The socket connected to the destination server.
+    - logger: The logger object for logging session events.
+    - termination: A queue used to signal termination of the session.
+    - server_q: A queue for sending data from the server to the client.
+    - device_q: A queue for sending data from the client to the server.
+    - s_addr: The address of the source client.
+    - s_sock: The socket connected to the source client.
+    """
+
+    def __init__(self, d_addr, d_sock, logger):
+        """
+        Initializes a new Session object.
+
+        Parameters:
+        - d_addr: The address of the destination server.
+        - d_sock: The socket connected to the destination server.
+        - logger: The logger object for logging session events.
+        """
         threading.Thread.__init__(self)
         self.d_sock = d_sock
         self.d_addr = d_addr
@@ -24,6 +42,9 @@ class Session(threading.Thread):
         self.logger = logger
 
     def run(self):
+        """
+        Starts the session by creating and starting the necessary threads.
+        """
         self.s_sock = self.connect_server(self.s_addr)
         t_dr = Thread(target=self.device_read, name='device read')
         t_dw = Thread(target=self.device_write, name='device write')
@@ -44,13 +65,36 @@ class Session(threading.Thread):
         t_sw.join()
         self.logger.info('session with %s has been terminated'%(str(self.s_addr)))
 
-    def in_range(self,time_range,lengths):
+    def in_range(self, time_range, lengths):
+        """
+        Checks if any of the lengths fall within the specified time range.
+
+        Parameters:
+        - time_range: A tuple representing the minimum and maximum time range.
+        - lengths: A list of lengths to check.
+
+        Returns:
+        - True if any of the lengths fall within the time range, False otherwise.
+        """
         for length in lengths:
             if (length >= time_range[0]) and (length <= time_range[1]):
                 return True
         return False
     
-    def analyze_hk(self,msg,dst):
+    def analyze_hk(self, msg, dst):
+        """
+        Analyzes the message and performs actions based on the destination.
+
+        Parameters:
+        - msg: The message to analyze.
+        - dst: The destination of the message.
+
+        Actions:
+        - Logs the number of bytes in the message.
+        - Reads instructions from a file named 'flag.txt'.
+        - Adds delay to the appropriate queue based on the instructions.
+        - Clears the instructions from the file.
+        """
         if dst == "server":
             address = self.s_addr
             other_address = self.d_addr
@@ -76,59 +120,56 @@ class Session(threading.Thread):
                         
 
     def analyze(self, msg, dst):
-        # Determine the destination of the message based on the 'dst' parameter.
+        """
+        Analyzes the message and performs actions based on the destination.
+
+        Parameters:
+        - msg: The message to analyze.
+        - dst: The destination of the message.
+
+        Actions:
+        - Logs the lengths of the records being sent to the address.
+        - Writes the lengths of the records to a CSV file.
+        - Reads instructions from a file named 'flag.txt'.
+        - Adds delay to the appropriate queue based on the instructions.
+        - Clears the instructions from the file.
+        """
         if dst == "server":
             address = self.s_addr
         else:
             address = self.d_addr
         
-        # Analyze the TLS type of the message using the TLSType function, obtaining a list of record signatures.
         records_sig = TLSType(msg)
-        
-        # Extract only the types of TLS records from the analysis results.
         type_list = [x[0] for x in records_sig]
         
-        # Check if 'application_data' is among the types of TLS records in the message.
         if ('application_data' in type_list):
-            # Extract the lengths of the TLS records.
             lengths = [x[1] for x in records_sig]
             
-            # Log the lengths of the records being sent to the address.
             logger.info("record of %s bytes to %s" % (str(lengths), address))
 
             self.write_to_csv(self.s_addr if dst == "server" else self.d_addr, self.d_addr if dst == "server" else self.s_addr, str(lengths))
             
-            # Attempt to read instructions from a file named 'flag.txt'.
             with open('./flag.txt', 'rt+') as flag:
                 instruct = flag.read()
                 if len(instruct) > 0:
-                    # If instructions exist, parse them for a length range and a delay value.
-                    #length_range, delay = instruct.split(' ')[0:2]
-                    #minimal, maximal = map(int, length_range.split(','))
                     ip_address, rest = instruct.split(';')
                     length_range, delay = rest.split(' ')[0:2]
 
                     minimal, maximal = map(int, length_range.split(','))
                     
-                    # Check if any of the TLS record lengths fall within the specified range.
                     if self.in_range((minimal, maximal), lengths):
-                        
-                        # If so, depending on the destination, add the delay to the appropriate queue.
                         if dst == "server" and ip_address:
                             self.device_q.put(int(delay))
                         else:
                             self.server_q.put(int(delay))
                             
-                        # Clear the instructions from the file to prevent repeated processing.
                         flag.truncate(0)
                         flag.flush()
 
-
-
-
-
-
     def device_read(self):
+        """
+        Reads data from the device socket and performs analysis.
+        """
         while True:
             try:
                 msg_f_d = self.d_sock.recv(8192)
@@ -146,6 +187,9 @@ class Session(threading.Thread):
 
         
     def device_write(self):
+        """
+        Writes data from the device queue to the server socket.
+        """
         while True:
             msg_t_d = self.server_q.get()
             if type(msg_t_d) == int:
@@ -163,6 +207,9 @@ class Session(threading.Thread):
                 break
 
     def server_read(self):
+        """
+        Reads data from the server socket and performs analysis.
+        """
         while True:
             try:
                 msg_f_s = self.s_sock.recv(8192)
@@ -179,6 +226,9 @@ class Session(threading.Thread):
                 break
         
     def server_write(self):
+        """
+        Writes data from the server queue to the device socket.
+        """
         while True:
             msg_t_s = self.device_q.get()
             if type(msg_t_s) == int:
@@ -195,8 +245,16 @@ class Session(threading.Thread):
             else:
                 break
 
+    def connect_server(self, s_addr):
+        """
+        Connects to the server using the given address.
 
-    def connect_server(self,s_addr):
+        Parameters:
+        - s_addr: The address of the server.
+
+        Returns:
+        - The socket connected to the server, or False if connection fails.
+        """
         s_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             s_sock.connect(s_addr)
@@ -206,12 +264,20 @@ class Session(threading.Thread):
             return False
         
     def write_to_csv(self, src_ip, dst_ip, byte_size):
+        """
+        Writes traffic data to a CSV file.
+
+        Parameters:
+        - src_ip: The source IP address.
+        - dst_ip: The destination IP address.
+        - byte_size: The size of the data in bytes.
+        """
         fieldnames = ['Date', 'Time', 'Src IP', 'Dst IP', 'Byte Size']
         file_exists = os.path.isfile('traffic_data.csv')
         with open('traffic_data.csv', 'a', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             if not file_exists:
-                writer.writeheader()  # Only write headers the first time
+                writer.writeheader()
             now = time.localtime()
             writer.writerow({
                 'Date': time.strftime('%Y-%m-%d', now),
@@ -221,42 +287,59 @@ class Session(threading.Thread):
                 'Byte Size': byte_size
             })
 
-    #NOT NECESSARY
-    def resetConnection(self, duration=30):  # Default duration can be overridden
+    def resetConnection(self, ):
+        """
+        Resets the connection to the destination server.
+        """
         self.logger.info(f"Initiating connection reset for {self.d_addr}")
         try:
-            self.termination.put(True)
+            self.termination.put(True)  # Signal termination to the session threads
             self.logger.info(f"Connection to {self.d_addr} has been closed.")
-            time.sleep(duration)
-            self.d_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.d_sock.connect(self.d_addr)
-            #d_sock, d_addr = listen_sock.accept()
-            #session_thread = Session(d_addr[0],d_sock,logger)
-            #session_thread.start()
+            self.s_sock.close()  # Close the existing socket connection
+            self.d_sock.close()
             self.logger.info(f"Connection to {self.d_addr} successfully re-established.")
         except Exception as e:
             self.logger.error(f"Failed to reset connection: {e}")
 
-
-
 def cli_interface(session_threads):
+    """
+    Provides a command-line interface for managing session threads.
+
+    Parameters:
+    - session_threads: A list of session threads.
+
+    Actions:
+    - Resets a connection based on user input.
+
+    Returns:
+    - The IP address and duration specified in the command.
+    """
     print("CLI interface is now active. Waiting for commands...")
     while True:
-        cmd = input("Enter command (e.g., reset <ip>): ")
+        cmd = input("Enter command (e.g., reset <ipaddress> -d <duration>): ")
         print(f"Command received: {cmd}")
         if cmd.startswith("reset "):
-            ip = cmd.split(" ")[1]
+            cmd_parts = cmd.split(" ")
+            ip = cmd_parts[1]
+            duration = 30
+            if "-d" in cmd_parts:
+                duration_index = cmd_parts.index("-d")
+                if duration_index + 1 < len(cmd_parts):
+                    duration = int(cmd_parts[duration_index + 1])
             found = False
             print(f"Looking for session with IP: {ip}")
             for session in session_threads:
                 print(f"Checking session with device IP: {session.d_addr}")
                 if session.d_addr[0] == ip:
-                    print(f"Initiating reset for session with IP {ip}")
-                    threading.Thread(target=session.resetConnection).start()
+                    print(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
+                    threading.Thread(target=session.resetConnection, args=(duration,)).start()
                     found = True
+                    # session.termination.put(True)
             
             if not found:
                 print(f"No active session with IP {ip} found.")
+            
+            return ip, duration
 
 
 
@@ -271,7 +354,6 @@ if __name__ == "__main__":
     # Starting the CLI in a separate thread
     cli_thread = threading.Thread(target=cli_interface, args=(session_threads,), daemon=True)
     cli_thread.start()
-
 
     logger = logging.getLogger('TLSLogger')
     formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -303,29 +385,23 @@ if __name__ == "__main__":
 
         while True:
             try:
-                with open('./reset_info.txt','rt+') as reset_txt:
-                    instruct = reset_txt.read()
-                    if len(instruct) > 0:
-                        ip_address, delay = instruct.split(';')
+                # Wait for the CLI thread to finish and get the return values
+                cli_thread.join()
+                ip_address, duration = cli_thread.result()
 
-                        for session in session_threads:
-                            if ip_address == session.d_addr[0]:
-                                print("Terminating connection: " + ip_address)
-                                session.termination.put(True)
+                # Listens for an incoming socket connection on port 10000.
+                d_sock, d_addr = listen_sock.accept()
 
-                        # Listens for an incoming socket connection on port 10000.
-                        d_sock, d_addr = listen_sock.accept()
+                #Need conditional verification to check the s_addr.
+                #Need to initiate an async timer instead of sleep.
+                #Check timer and address 
 
-                        #Need conditional verification to check the s_addr.
-                        #Need to initiate an async timer instead of sleep.
-                        #Check timer and address 
-
-                        #Wrap the session statements in an else statement
-                        #Establishes a new socket connection with the d_sock and d_addr
-                        session_thread = Session(d_addr,d_sock,logger)
-                        print("Start new: " + d_addr[0])
-                        session_threads.append(session_thread)
-                        session_thread.start()
+                #Wrap the session statements in an else statement
+                #Establishes a new socket connection with the d_sock and d_addr
+                session_thread = Session(d_addr,d_sock,logger)
+                print("Start new: " + d_addr[0])
+                session_threads.append(session_thread)
+                session_thread.start()
                 
             except KeyboardInterrupt:
                 for session in session_threads:
