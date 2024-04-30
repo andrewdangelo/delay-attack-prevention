@@ -6,3 +6,4 @@ netifaces
 pick
 gevent
 dpkt
+colorama

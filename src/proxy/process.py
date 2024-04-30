@@ -7,6 +7,7 @@ import sys
 from util import *
 from TLSRecon import TLSType
 import csv
+from colorama import Fore, Style
 
 class Session(threading.Thread):
     """
@@ -287,7 +288,7 @@ class Session(threading.Thread):
                 'Byte Size': byte_size
             })
 
-    def resetConnection(self, ):
+    def resetConnection(self):
         """
         Resets the connection to the destination server.
         """
@@ -297,7 +298,6 @@ class Session(threading.Thread):
             self.logger.info(f"Connection to {self.d_addr} has been closed.")
             self.s_sock.close()  # Close the existing socket connection
             self.d_sock.close()
-            self.logger.info(f"Connection to {self.d_addr} successfully re-established.")
         except Exception as e:
             self.logger.error(f"Failed to reset connection: {e}")
 
@@ -314,10 +314,10 @@ def cli_interface(session_threads):
     Returns:
     - The IP address and duration specified in the command.
     """
-    print("CLI interface is now active. Waiting for commands...")
+    logger.info("CLI interface is now active. Waiting for commands...")
     while True:
         cmd = input("Enter command (e.g., reset <ipaddress> -d <duration>): ")
-        print(f"Command received: {cmd}")
+        logger.info(f"Command received: {cmd}")
         if cmd.startswith("reset "):
             cmd_parts = cmd.split(" ")
             ip = cmd_parts[1]
@@ -327,20 +327,29 @@ def cli_interface(session_threads):
                 if duration_index + 1 < len(cmd_parts):
                     duration = int(cmd_parts[duration_index + 1])
             found = False
-            print(f"Looking for session with IP: {ip}")
+            logger.info(f"Looking for session with IP: {ip}")
             for session in session_threads:
-                print(f"Checking session with device IP: {session.d_addr}")
+                logger.info(f"Checking session with device IP: {session.d_addr}")
                 if session.d_addr[0] == ip:
-                    print(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
+                    logger.info(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
                     threading.Thread(target=session.resetConnection, args=(duration,)).start()
                     found = True
                     # session.termination.put(True)
             
             if not found:
-                print(f"No active session with IP {ip} found.")
+                logger.info(f"No active session with IP {ip} found.")
             
             return ip, duration
 
+class CustomLogger(logging.getLoggerClass()):
+    def __init__(self, name, level=logging.NOTSET):
+        super().__init__(name, level)
+
+        logging.addLevelName(60, "RESET")
+
+    def reset(self, message, *args, **kws):
+        if self.isEnabledFor(60):
+            self._log(60, message, args, **kws)
 
 
 
@@ -350,10 +359,17 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--port',type=int, default=10000, metavar='P',help= 'port to listen')
     args = parser.parse_args()
 
+    #reset flag
+    reset_flag = False
+
+    ip = None
+    duration = None
+
     session_threads = []
     # Starting the CLI in a separate thread
-    cli_thread = threading.Thread(target=cli_interface, args=(session_threads,), daemon=True)
-    cli_thread.start()
+    #cli_thread = threading.Thread(target=cli_interface, args=(session_threads,), daemon=True)
+    #cli_thread.start()
+    logging.setLoggerClass(CustomLogger)
 
     logger = logging.getLogger('TLSLogger')
     formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -385,12 +401,66 @@ if __name__ == "__main__":
 
         while True:
             try:
-                # Wait for the CLI thread to finish and get the return values
-                cli_thread.join()
-                ip_address, duration = cli_thread.result()
-
                 # Listens for an incoming socket connection on port 10000.
                 d_sock, d_addr = listen_sock.accept()
+                logger.info("New connection from: %s" % str(d_addr[0]))
+
+                # Read reset info from the text file
+                with open('reset_info.txt', 'r') as file:
+                    reset_info = file.readline().strip().split()
+                
+                # Check if reset info is available
+                if reset_info:
+                    # Capture the ip address and delay duration
+                    ip = reset_info[0]
+                    duration = int(reset_info[1])
+
+                    #set reset flag to true
+                    reset_flag = True
+ 
+
+                    #close all the session threads with that ip address
+                    print("----------------------------------------------------------------------")
+                    logger.info(f"Looking for session with IP: {ip}")
+                    for session in session_threads:
+                        #logger.info(f"Checking session with device IP: {session.d_addr}")
+                        if session.d_addr[0] == ip:
+                            logger.info("Session found!")
+                            logger.info(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
+                            session.resetConnection()
+
+                    # Start duration timer.
+                    startTime = time.time()
+                    logger.info("****Start Time: %s****" % time.strftime("%H:%M:%S", time.gmtime(startTime)))
+                    logger.info("Ip address of source: %s" % ip)
+                    logger.info("Duration: %s" % duration)
+                    logger.info("Reset Flag: %s" % reset_flag)
+                    # Clear the reset info from the text file
+                    with open('reset_info.txt', 'w') as file:
+                        file.write('')
+
+                #if ip equals the s_addr of the incoming socket connection 
+                if reset_flag == True and ip == d_addr[0]:
+                    
+                    current_time = time.time()
+
+                    delay = current_time - startTime
+                    logger.info("****Delay: %s****" % time.strftime("%H:%M:%S", time.gmtime(delay)))
+
+                    if current_time - startTime >= duration:
+                        logger.info("***End time: %s***" % time.strftime("%H:%M:%S", time.gmtime(current_time)))
+                        print("----------------------------------------------------------------------------------")
+                        reset_flag = False
+                        ip = None
+                        duration = None
+                    
+
+                    
+                    # Clear the reset info from the text file
+                else:
+                    session_thread = Session(d_addr,d_sock,logger)
+                    session_threads.append(session_thread)
+                    session_thread.start()
 
                 #Need conditional verification to check the s_addr.
                 #Need to initiate an async timer instead of sleep.
@@ -398,11 +468,8 @@ if __name__ == "__main__":
 
                 #Wrap the session statements in an else statement
                 #Establishes a new socket connection with the d_sock and d_addr
-                session_thread = Session(d_addr,d_sock,logger)
-                print("Start new: " + d_addr[0])
-                session_threads.append(session_thread)
-                session_thread.start()
-                
+    
+            
             except KeyboardInterrupt:
                 for session in session_threads:
                     session.termination.put(True)

@@ -1,0 +1,24 @@
+sudo iptables -t nat -A PREROUTING -p tcp -d 10.3.141.126 -j REDIRECT --to-port 10000
+sudo iptables -t nat -A PREROUTING -p tcp -s 10.3.141.126 -j REDIRECT --to-port 10000
+sudo iptables -t filter -A FORWARD -p tcp -d 10.3.141.126 -j DROP
+sudo iptables -t filter -A FORWARD -p tcp -s 10.3.141.126 -j DROP
+sudo iptables -t nat -A PREROUTING -p tcp -d 10.3.141.106 -j REDIRECT --to-port 10000
+sudo iptables -t nat -A PREROUTING -p tcp -s 10.3.141.106 -j REDIRECT --to-port 10000
+sudo iptables -t filter -A FORWARD -p tcp -d 10.3.141.106 -j DROP
+sudo iptables -t filter -A FORWARD -p tcp -s 10.3.141.106 -j DROP
+sudo iptables -t nat -A PREROUTING -p tcp -d 10.3.141.228 -j REDIRECT --to-port 10000
+sudo iptables -t nat -A PREROUTING -p tcp -s 10.3.141.228 -j REDIRECT --to-port 10000
+sudo iptables -t filter -A FORWARD -p tcp -d 10.3.141.228 -j DROP
+sudo iptables -t filter -A FORWARD -p tcp -s 10.3.141.228 -j DROP
+sudo iptables -t nat -A PREROUTING -p tcp -d 10.3.141.107 -j REDIRECT --to-port 10000
+sudo iptables -t nat -A PREROUTING -p tcp -s 10.3.141.107 -j REDIRECT --to-port 10000
+sudo iptables -t filter -A FORWARD -p tcp -d 10.3.141.107 -j DROP
+sudo iptables -t filter -A FORWARD -p tcp -s 10.3.141.107 -j DROP
+sudo iptables -t nat -A PREROUTING -p tcp -d 10.3.141.246 -j REDIRECT --to-port 10000
+sudo iptables -t nat -A PREROUTING -p tcp -s 10.3.141.246 -j REDIRECT --to-port 10000
+sudo iptables -t filter -A FORWARD -p tcp -d 10.3.141.246 -j DROP
+sudo iptables -t filter -A FORWARD -p tcp -s 10.3.141.246 -j DROP
+sudo iptables -t nat -A PREROUTING -p tcp -d 10.3.141.92 -j REDIRECT --to-port 10000
+sudo iptables -t nat -A PREROUTING -p tcp -s 10.3.141.92 -j REDIRECT --to-port 10000
+sudo iptables -t filter -A FORWARD -p tcp -d 10.3.141.92 -j DROP
+sudo iptables -t filter -A FORWARD -p tcp -s 10.3.141.92 -j DROP
