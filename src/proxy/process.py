@@ -292,10 +292,10 @@ class Session(threading.Thread):
         """
         Resets the connection to the destination server.
         """
-        self.logger.info(f"Initiating connection reset for {self.d_addr}")
+        self.logger.reset(f"Initiating connection reset for {self.d_addr}")
         try:
             self.termination.put(True)  # Signal termination to the session threads
-            self.logger.info(f"Connection to {self.d_addr} has been closed.")
+            self.logger.reset(f"Connection to {self.d_addr} has been closed.")
             self.s_sock.close()  # Close the existing socket connection
             self.d_sock.close()
         except Exception as e:
@@ -349,7 +349,7 @@ class CustomLogger(logging.getLoggerClass()):
 
     def reset(self, message, *args, **kws):
         if self.isEnabledFor(60):
-            self._log(60, message, args, **kws)
+            self._log(60, Fore.RED + message + Style.RESET_ALL, args, **kws)
 
 
 
@@ -364,6 +364,8 @@ if __name__ == "__main__":
 
     ip = None
     duration = None
+    temp_addr = None
+    temp_sock = None
 
     session_threads = []
     # Starting the CLI in a separate thread
@@ -403,7 +405,6 @@ if __name__ == "__main__":
             try:
                 # Listens for an incoming socket connection on port 10000.
                 d_sock, d_addr = listen_sock.accept()
-                logger.info("New connection from: %s" % str(d_addr[0]))
 
                 # Read reset info from the text file
                 with open('reset_info.txt', 'r') as file:
@@ -421,34 +422,38 @@ if __name__ == "__main__":
 
                     #close all the session threads with that ip address
                     print("----------------------------------------------------------------------")
-                    logger.info(f"Looking for session with IP: {ip}")
+                    logger.reset(f"Looking for session with IP: {ip}")
                     for session in session_threads:
                         #logger.info(f"Checking session with device IP: {session.d_addr}")
                         if session.d_addr[0] == ip:
-                            logger.info("Session found!")
-                            logger.info(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
+                            logger.reset("Session found!")
+                            logger.reset(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
                             session.resetConnection()
+                            session_threads.remove(session)
+
+                    
 
                     # Start duration timer.
                     startTime = time.time()
-                    logger.info("****Start Time: %s****" % time.strftime("%H:%M:%S", time.gmtime(startTime)))
-                    logger.info("Ip address of source: %s" % ip)
-                    logger.info("Duration: %s" % duration)
-                    logger.info("Reset Flag: %s" % reset_flag)
+                    logger.reset("****Start Time: %s****" % time.strftime("%H:%M:%S", time.gmtime(startTime)))
+                    logger.reset("Ip address of source: %s" % ip)
+                    logger.reset("Duration: %s" % duration)
+                    logger.reset("Reset Flag: %s" % reset_flag)
                     # Clear the reset info from the text file
                     with open('reset_info.txt', 'w') as file:
                         file.write('')
 
                 #if ip equals the s_addr of the incoming socket connection 
                 if reset_flag == True and ip == d_addr[0]:
-                    
+                    temp_addr = d_addr
+                    temp_sock = d_sock
                     current_time = time.time()
 
                     delay = current_time - startTime
-                    logger.info("****Delay: %s****" % time.strftime("%H:%M:%S", time.gmtime(delay)))
+                    logger.reset("****Delay: %s****" % time.strftime("%H:%M:%S", time.gmtime(delay)))
 
                     if current_time - startTime >= duration:
-                        logger.info("***End time: %s***" % time.strftime("%H:%M:%S", time.gmtime(current_time)))
+                        logger.reset("***End time: %s***" % time.strftime("%H:%M:%S", time.gmtime(current_time)))
                         print("----------------------------------------------------------------------------------")
                         reset_flag = False
                         ip = None
@@ -477,4 +482,4 @@ if __name__ == "__main__":
                 del listen_sock
                 sys.exit()
 
-#1. When we 
+# I need a way to capture a socket when and save it temproraily so that when the timer is up I will set up a connection with the most recent socket.
