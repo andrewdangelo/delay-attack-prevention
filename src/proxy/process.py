@@ -301,45 +301,6 @@ class Session(threading.Thread):
         except Exception as e:
             self.logger.error(f"Failed to reset connection: {e}")
 
-def cli_interface(session_threads):
-    """
-    Provides a command-line interface for managing session threads.
-
-    Parameters:
-    - session_threads: A list of session threads.
-
-    Actions:
-    - Resets a connection based on user input.
-
-    Returns:
-    - The IP address and duration specified in the command.
-    """
-    logger.info("CLI interface is now active. Waiting for commands...")
-    while True:
-        cmd = input("Enter command (e.g., reset <ipaddress> -d <duration>): ")
-        logger.info(f"Command received: {cmd}")
-        if cmd.startswith("reset "):
-            cmd_parts = cmd.split(" ")
-            ip = cmd_parts[1]
-            duration = 30
-            if "-d" in cmd_parts:
-                duration_index = cmd_parts.index("-d")
-                if duration_index + 1 < len(cmd_parts):
-                    duration = int(cmd_parts[duration_index + 1])
-            found = False
-            logger.info(f"Looking for session with IP: {ip}")
-            for session in session_threads:
-                logger.info(f"Checking session with device IP: {session.d_addr}")
-                if session.d_addr[0] == ip:
-                    logger.info(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
-                    threading.Thread(target=session.resetConnection, args=(duration,)).start()
-                    found = True
-                    # session.termination.put(True)
-            
-            if not found:
-                logger.info(f"No active session with IP {ip} found.")
-            
-            return ip, duration
 
 class CustomLogger(logging.getLoggerClass()):
     def __init__(self, name, level=logging.NOTSET):
@@ -351,6 +312,22 @@ class CustomLogger(logging.getLoggerClass()):
         if self.isEnabledFor(60):
             self._log(60, Fore.RED + message + Style.RESET_ALL, args, **kws)
 
+
+async def timer(duration, establish_session, addr, sock, sessions, logger):
+    for i in range(duration, 0, -1):
+        logger.reset(f"Timer: {i} seconds remaining")
+        await asyncio.sleep(1)
+    establish_session(addr, sock, sessions, logger)
+
+def start_timer(duration, establish_session, addr, sock, sessions, logger):
+    asyncio.run(timer(duration, establish_session, addr, sock, sessions, logger))
+
+# Define your action function here
+def establish_session(addr, sock, sessions, logger):
+    logger.reset("Establishing session with %s"%(str(addr)))
+    session_thread = Session(d_addr,d_sock,logger)
+    session_threads.append(session_thread)
+    session_thread.start()
 
 
 if __name__ == "__main__":
@@ -366,11 +343,11 @@ if __name__ == "__main__":
     duration = None
     temp_addr = None
     temp_sock = None
+    save_addr = None
+    save_sock = None
 
     session_threads = []
-    # Starting the CLI in a separate thread
-    #cli_thread = threading.Thread(target=cli_interface, args=(session_threads,), daemon=True)
-    #cli_thread.start()
+    
     logging.setLoggerClass(CustomLogger)
 
     logger = logging.getLogger('TLSLogger')
@@ -428,14 +405,17 @@ if __name__ == "__main__":
                         if session.d_addr[0] == ip:
                             logger.reset("Session found!")
                             logger.reset(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
+                            save_sock = session.d_sock
+                            save_addr = session.d_addr
                             session.resetConnection()
                             session_threads.remove(session)
 
                     
 
                     # Start duration timer.
-                    startTime = time.time()
-                    logger.reset("****Start Time: %s****" % time.strftime("%H:%M:%S", time.gmtime(startTime)))
+
+                    #startTime = time.time()
+                    #logger.reset("****Start Time: %s****" % time.strftime("%H:%M:%S", time.gmtime(startTime)))
                     logger.reset("Ip address of source: %s" % ip)
                     logger.reset("Duration: %s" % duration)
                     logger.reset("Reset Flag: %s" % reset_flag)
@@ -447,7 +427,26 @@ if __name__ == "__main__":
                 if reset_flag == True and ip == d_addr[0]:
                     temp_addr = d_addr
                     temp_sock = d_sock
+
+                    startTime = time.time()
+                    print("----------------------------------------------------------------------------------")
+                    logger.reset("****Start Time: %s****" % time.strftime("%H:%M:%S", time.gmtime(startTime)))
+                    
+                    #Start the async countdown timer
+                    start_timer(duration, establish_session, temp_addr, temp_sock, session_threads, logger)
+
                     current_time = time.time()
+                    logger.reset("***End time: %s***" % time.strftime("%H:%M:%S", time.gmtime(current_time)))
+                    delay = current_time - startTime
+                    logger.reset("****Delay: %s****" % time.strftime("%H:%M:%S", time.gmtime(delay)))
+                    print("----------------------------------------------------------------------------------")
+                    # Reset vars
+                    reset_flag = False
+                    ip = None
+                    duration = None
+
+                    """ current_time = time.time()
+
 
                     delay = current_time - startTime
                     logger.reset("****Delay: %s****" % time.strftime("%H:%M:%S", time.gmtime(delay)))
@@ -457,7 +456,7 @@ if __name__ == "__main__":
                         print("----------------------------------------------------------------------------------")
                         reset_flag = False
                         ip = None
-                        duration = None
+                        duration = None """
                     
 
                     
