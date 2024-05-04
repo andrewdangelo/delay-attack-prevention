@@ -8,6 +8,9 @@ from util import *
 from TLSRecon import TLSType
 import csv
 from colorama import Fore, Style
+import json
+from util import find_recent_pattern
+
 
 class Session(threading.Thread):
     """
@@ -41,6 +44,9 @@ class Session(threading.Thread):
         self.device_q = Queue()
         self.s_addr = original_addr(d_sock)
         self.logger = logger
+        self.timestamps = []
+        self.msg_lengths = []
+        
 
     def run(self):
         """
@@ -102,7 +108,12 @@ class Session(threading.Thread):
         else:
             address = self.d_addr
             other_address =  self.s_addr
+        
         logger.info("%d bytes to %s from %s"%(len(msg),address, other_address))
+
+        self.timestamps.append(time.time())
+        self.msg_lengths.append(len(msg))
+
         with open('./flag.txt','rt+') as flag:
                 instruct = flag.read()
                 length = len(msg)
@@ -301,6 +312,18 @@ class Session(threading.Thread):
         except Exception as e:
             self.logger.error(f"Failed to reset connection: {e}")
 
+    def getTimestamps(self):
+        """
+        Returns the timestamps list.
+        """
+        return self.timestamps
+    
+    def getMsgLengths(self):
+        """
+        Returns the message lengths list.
+        """
+        return self.msg_lengths
+    
 
 class CustomLogger(logging.getLoggerClass()):
     def __init__(self, name, level=logging.NOTSET):
@@ -329,6 +352,12 @@ def establish_session(addr, sock, sessions, logger):
     session_threads.append(session_thread)
     session_thread.start()
 
+def read_json_file(file_path):
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+    return data
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Transparent proxy for TLS sessions')
@@ -341,6 +370,7 @@ if __name__ == "__main__":
 
     ip = None
     duration = None
+    deviation = None
     temp_addr = None
     temp_sock = None
     save_addr = None
@@ -380,18 +410,20 @@ if __name__ == "__main__":
 
         while True:
             try:
-                # Listens for an incoming socket connection on port 10000.
-                d_sock, d_addr = listen_sock.accept()
 
                 # Read reset info from the text file
-                with open('reset_info.txt', 'r') as file:
+                with open('reset_info.txt', 'rt+') as file:
                     reset_info = file.readline().strip().split()
+
+                # Listens for an incoming socket connection on port 10000.
+                d_sock, d_addr = listen_sock.accept()
                 
                 # Check if reset info is available
                 if reset_info:
-                    # Capture the ip address and delay duration
+                    # Capture the ip address, delay duration, and deviation
                     ip = reset_info[0]
                     duration = int(reset_info[1])
+                    deviation = float(reset_info[2])
 
                     #set reset flag to true
                     reset_flag = True
@@ -403,6 +435,22 @@ if __name__ == "__main__":
                     for session in session_threads:
                         #logger.info(f"Checking session with device IP: {session.d_addr}")
                         if session.d_addr[0] == ip:
+                            # Find last closest KA to save.
+                            # Get session data.
+                            ses_msgs = session.getMsgLengths()
+                            ses_timestamps = session.getTimestamps()
+
+                            # Read in keep alive patterns
+                            file_path = 'keep_alive_patterns.json'
+                            ka_pattern = read_json_file(file_path)
+
+                            # Find the most recent matching pattern
+                            idx_of_ka = find_recent_pattern(ses_msgs, ka_pattern[ip])
+                            print("KA pattern type: ", ka_pattern[ip])
+
+                            logger.reset(f"idx_of_ka: {idx_of_ka}")
+                            logger.reset(f"Last Keep Alive: {ses_timestamps[idx_of_ka]}")
+                            logger.reset(f"Data: {ses_msgs, ses_timestamps}")
                             logger.reset("Session found!")
                             logger.reset(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
                             save_sock = session.d_sock
@@ -422,6 +470,8 @@ if __name__ == "__main__":
                     # Clear the reset info from the text file
                     with open('reset_info.txt', 'w') as file:
                         file.write('')
+
+                    
 
                 #if ip equals the s_addr of the incoming socket connection 
                 if reset_flag == True and ip == d_addr[0]:
@@ -481,4 +531,6 @@ if __name__ == "__main__":
                 del listen_sock
                 sys.exit()
 
-# I need a way to capture a socket when and save it temproraily so that when the timer is up I will set up a connection with the most recent socket.
+# TODO: (DONE) Set up a deviation range parameter for an acceptable delay.
+# TODO: (DONE) Take in 2 parameters, 1. time interval, 2. acceptable deviation range (I.E. 20%)
+# TODO: Allow for multiple variations of a KA pattern in the check util.
