@@ -66,30 +66,23 @@ def start_timer(duration, establish_session, addr, sock, sessions, logger):
 # It returns the index of the most recent occurrence of the pattern in the message data.
 # If the pattern is not found, it returns -1.
 def find_recent_pattern(msgData, pattern):
-    idx_found = False
-    i, j = 0, 0
+    most_recent_index = -1
 
     for variation in pattern:
+        i, j = 0, 0
         while i < len(msgData):
-            if msgData[i] == variation[j]:  # Check if current character matches the pattern variation
-                i += 1
+            if msgData[i] == variation[j]:  # Check if current data matches the pattern variation
                 j += 1
+                if j == len(variation):  # If pattern variation fully matches
+                    current_end_index = i
+                    most_recent_index = max(most_recent_index, current_end_index)  # Update the most recent index
+                    j = 0  # Reset j for further searching
             else:
-                if j != 0:  # If pattern variation partially matches, reset j to 0
-                    j = 0
-                else:
-                    i += 1  # If pattern variation doesn't match, move to the next character
+                i -= j  # Reset i to start of the last match attempt plus one
+                j = 0   # Reset j to start of variation
+            i += 1
 
-            if j == len(variation):  # If pattern variation fully matches, set idx_found to True and reset j to 0
-                idx_found = True
-                j = 0
-
-        if idx_found:
-            return i-1  # Return the index of the most recent occurrence of the pattern variation
-        else:
-            i = 0  # Reset i to 0 for the next pattern variation
-
-    return -1  # Return -1 if pattern is not found
+    return most_recent_index
     
 
 def find_recent_pattern_without_variation(msgData, pattern):
