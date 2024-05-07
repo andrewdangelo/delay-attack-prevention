@@ -10,7 +10,8 @@ import csv
 from colorama import Fore, Style
 import json
 from util import find_recent_pattern
-from datetime import datetime, timezone
+from datetime import datetime
+import pytz
 
 
 class Session(threading.Thread):
@@ -459,10 +460,11 @@ if __name__ == "__main__":
                             logger.reset(f"Data: {ses_msgs}")
 
                             timestamp = ses_timestamps[idx_of_ka]
-                            est_time_ka = datetime.fromtimestamp(timestamp, timezone.utc).astimezone(timezone('US/Eastern'))
+                            est = pytz.timezone('US/Eastern')
+                            est_time_ka = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(est)
 
                             logger.reset(f"Last Keep Alive: {est_time_ka}")
-                            
+
                             print("----------------------------------------------------------------------------------")
                             logger.reset("Session found!")
                             logger.reset(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
