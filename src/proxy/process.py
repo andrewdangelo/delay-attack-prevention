@@ -306,9 +306,9 @@ class Session(threading.Thread):
         self.logger.reset(f"Initiating connection reset for {self.d_addr}")
         try:
             self.termination.put(True)  # Signal termination to the session threads
-            self.logger.reset(f"Connection to {self.d_addr} has been closed.")
-            self.s_sock.close()  # Close the existing socket connection
-            self.d_sock.close()
+            #self.logger.reset(f"Connection to {self.d_addr} has been closed.")
+            #self.s_sock.close()  # Close the existing socket connection
+            #self.d_sock.close()
         except Exception as e:
             self.logger.error(f"Failed to reset connection: {e}")
 
@@ -330,10 +330,15 @@ class CustomLogger(logging.getLoggerClass()):
         super().__init__(name, level)
 
         logging.addLevelName(60, "RESET")
+        logging.addLevelName(61, "CONFIG")
 
     def reset(self, message, *args, **kws):
         if self.isEnabledFor(60):
             self._log(60, Fore.RED + message + Style.RESET_ALL, args, **kws)
+
+    def config(self, message, *args, **kws):
+        if self.isEnabledFor(61):
+            self._log(61, Fore.BLUE + message + Style.RESET_ALL, args, **kws)
 
 
 async def timer(duration, establish_session, addr, sock, sessions, logger):
@@ -348,7 +353,7 @@ def start_timer(duration, establish_session, addr, sock, sessions, logger):
 # Define your action function here
 def establish_session(addr, sock, sessions, logger):
     logger.reset("Establishing session with %s"%(str(addr)))
-    session_thread = Session(d_addr,d_sock,logger)
+    session_thread = Session(addr,sock,logger)
     session_threads.append(session_thread)
     session_thread.start()
 
@@ -430,10 +435,10 @@ if __name__ == "__main__":
  
 
                     #close all the session threads with that ip address
-                    print("----------------------------------------------------------------------")
+                    print("==================================================================================")
                     logger.reset(f"Looking for session with IP: {ip}")
                     for session in session_threads:
-                        #logger.info(f"Checking session with device IP: {session.d_addr}")
+                        logger.config(f"Checking session with device IP: {session.d_addr}")
                         if session.d_addr[0] == ip:
                             # Find last closest KA to save.
                             # Get session data.
@@ -447,14 +452,14 @@ if __name__ == "__main__":
                             # Find the most recent matching pattern
                             idx_of_ka = find_recent_pattern(ses_msgs, ka_pattern[ip])
                             print("KA pattern type: ", ka_pattern[ip])
-
-                            logger.reset(f"idx_of_ka: {idx_of_ka}")
+                            print("----------------------------------------------------------------------------------")
+                            if idx_of_ka >= 0:
+                                logger.reset(f"idx_of_ka: {idx_of_ka}")
+                            logger.reset(f"Data: {ses_msgs}")
                             logger.reset(f"Last Keep Alive: {ses_timestamps[idx_of_ka]}")
-                            logger.reset(f"Data: {ses_msgs, ses_timestamps}")
+                            print("----------------------------------------------------------------------------------")
                             logger.reset("Session found!")
                             logger.reset(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
-                            save_sock = session.d_sock
-                            save_addr = session.d_addr
                             session.resetConnection()
                             session_threads.remove(session)
 
@@ -479,7 +484,7 @@ if __name__ == "__main__":
                     temp_sock = d_sock
 
                     startTime = time.time()
-                    print("----------------------------------------------------------------------------------")
+                    print("==================================================================================")
                     logger.reset("****Start Time: %s****" % time.strftime("%H:%M:%S", time.gmtime(startTime)))
                     
                     #Start the async countdown timer
@@ -489,7 +494,7 @@ if __name__ == "__main__":
                     logger.reset("***End time: %s***" % time.strftime("%H:%M:%S", time.gmtime(current_time)))
                     delay = current_time - startTime
                     logger.reset("****Delay: %s****" % time.strftime("%H:%M:%S", time.gmtime(delay)))
-                    print("----------------------------------------------------------------------------------")
+                    print("==================================================================================")
                     # Reset vars
                     reset_flag = False
                     ip = None
@@ -511,6 +516,11 @@ if __name__ == "__main__":
 
                     
                     # Clear the reset info from the text file
+                elif reset_flag == True and ip != d_addr[0]:
+                    session_thread = Session(d_addr,d_sock,logger)
+                    session_threads.append(session_thread)
+                    session_thread.start()
+
                 else:
                     session_thread = Session(d_addr,d_sock,logger)
                     session_threads.append(session_thread)

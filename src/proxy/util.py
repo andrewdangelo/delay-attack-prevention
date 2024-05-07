@@ -69,6 +69,33 @@ def find_recent_pattern(msgData, pattern):
     idx_found = False
     i, j = 0, 0
 
+    for variation in pattern:
+        while i < len(msgData):
+            if msgData[i] == variation[j]:  # Check if current character matches the pattern variation
+                i += 1
+                j += 1
+            else:
+                if j != 0:  # If pattern variation partially matches, reset j to 0
+                    j = 0
+                else:
+                    i += 1  # If pattern variation doesn't match, move to the next character
+
+            if j == len(variation):  # If pattern variation fully matches, set idx_found to True and reset j to 0
+                idx_found = True
+                j = 0
+
+        if idx_found:
+            return i-1  # Return the index of the most recent occurrence of the pattern variation
+        else:
+            i = 0  # Reset i to 0 for the next pattern variation
+
+    return -1  # Return -1 if pattern is not found
+    
+
+def find_recent_pattern_without_variation(msgData, pattern):
+    idx_found = False
+    i, j = 0, 0
+
     while i < len(msgData):
         if msgData[i] == pattern[j]:  # Check if current character matches the pattern
             i += 1
