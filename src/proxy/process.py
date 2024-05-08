@@ -387,9 +387,9 @@ class CustomLogger(logging.getLoggerClass()):
             self._log(61, Fore.BLUE + message + Style.RESET_ALL, args, **kws)
 
 
-def establish_session(addr, sock, sessions, logger):
+def establish_session(addr, sock, sessions, logger, data_manager):
     logger.reset("Establishing session with %s"%(str(addr)))
-    session_thread = Session(addr,sock,logger)
+    session_thread = Session(addr,sock,logger, data_manager)
     session_threads.append(session_thread)
     session_thread.start()
 
@@ -401,6 +401,7 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--port',type=int, default=10000, metavar='P',help= 'port to listen')
     args = parser.parse_args()
 
+    #defines a global data store for all sessions
     data_manager = DataManager()
 
     #reset flag
@@ -475,8 +476,8 @@ if __name__ == "__main__":
                         if session.d_addr[0] == ip:
                             # Find last closest KA to save.
                             # Get session data.
-                            ses_msgs = session.getMsgLengths()
-                            ses_timestamps = session.getTimestamps()
+                            ses_msgs = data_manager.get_msg_data(ip)
+                            ses_timestamps = data_manager.get_timestamp_data(ip)
                             
 
                             print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
@@ -534,7 +535,7 @@ if __name__ == "__main__":
                     logger.reset("****Start Time: %s****" % time.strftime("%H:%M:%S", time.gmtime(startTime)))
                     
                     #Start the async countdown timer
-                    start_timer(duration, establish_session, temp_addr, temp_sock, session_threads, logger)
+                    start_timer(duration, establish_session, temp_addr, temp_sock, session_threads, logger, data_manager)
 
                     current_time = time.time()
                     logger.reset("***End time: %s***" % time.strftime("%H:%M:%S", time.gmtime(current_time)))

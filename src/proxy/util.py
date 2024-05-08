@@ -42,7 +42,7 @@ def device_type(length):
         return 'third_reality'
 
 
-async def timer(duration, establish_session, addr, sock, sessions, logger):
+async def timer(duration, establish_session, addr, sock, sessions, logger, data_manager):
     """
     A timer function that waits for a specified duration and then establishes a session.
 
@@ -60,10 +60,10 @@ async def timer(duration, establish_session, addr, sock, sessions, logger):
     for i in range(duration, 0, -1):
         logger.reset(f"Timer: {i} seconds remaining")
         await asyncio.sleep(1)
-    establish_session(addr, sock, sessions, logger)
+    establish_session(addr, sock, sessions, logger, data_manager)
 
 
-def start_timer(duration, establish_session, addr, sock, sessions, logger):
+def start_timer(duration, establish_session, addr, sock, sessions, logger, data_manager):
     """
     Starts a timer for the specified duration and runs the timer coroutine.
 
@@ -78,7 +78,7 @@ def start_timer(duration, establish_session, addr, sock, sessions, logger):
     Returns:
         None
     """
-    asyncio.run(timer(duration, establish_session, addr, sock, sessions, logger))
+    asyncio.run(timer(duration, establish_session, addr, sock, sessions, logger, data_manager))
 
 
 
