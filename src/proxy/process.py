@@ -123,6 +123,7 @@ class Session(threading.Thread):
         self.data_manager.set_msg_data(self.d_addr[0], len(msg))
         self.data_manager.set_timestamp_data(self.d_addr[0], time.time())
 
+
         with open('./flag.txt','rt+') as flag:
                 instruct = flag.read()
                 length = len(msg)
