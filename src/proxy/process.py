@@ -9,9 +9,10 @@ from TLSRecon import TLSType
 import csv
 from colorama import Fore, Style
 import json
-from util import find_recent_pattern
+from util import find_recent_pattern, start_timer, read_json_file
 from datetime import datetime
 import pytz
+from dataManager import DataManager
 
 
 class Session(threading.Thread):
@@ -29,7 +30,7 @@ class Session(threading.Thread):
     - s_sock: The socket connected to the source client.
     """
 
-    def __init__(self, d_addr, d_sock, logger):
+    def __init__(self, d_addr, d_sock, logger, data_manager):
         """
         Initializes a new Session object.
 
@@ -37,6 +38,7 @@ class Session(threading.Thread):
         - d_addr: The address of the destination server.
         - d_sock: The socket connected to the destination server.
         - logger: The logger object for logging session events.
+        - data_manager: The data manager object for managing session data.
         """
         threading.Thread.__init__(self)
         self.d_sock = d_sock
@@ -46,6 +48,7 @@ class Session(threading.Thread):
         self.device_q = Queue()
         self.s_addr = original_addr(d_sock)
         self.logger = logger
+        self.data_manager = data_manager
         self.timestamps = []
         self.msg_lengths = []
         
@@ -115,6 +118,10 @@ class Session(threading.Thread):
 
         self.timestamps.append(time.time())
         self.msg_lengths.append(len(msg))
+
+
+        self.data_manager.set_msg_data(self.d_addr[0], len(msg))
+        self.data_manager.set_timestamp_data(self.d_addr[0], time.time())
 
         with open('./flag.txt','rt+') as flag:
                 instruct = flag.read()
@@ -328,41 +335,62 @@ class Session(threading.Thread):
     
 
 class CustomLogger(logging.getLoggerClass()):
+    """
+    Custom logger class that extends the base logger class.
+    """
+
     def __init__(self, name, level=logging.NOTSET):
+        """
+        Initialize the CustomLogger object.
+
+        Args:
+            name (str): The name of the logger.
+            level (int): The logging level.
+
+        Returns:
+            None
+        """
         super().__init__(name, level)
 
         logging.addLevelName(60, "RESET")
         logging.addLevelName(61, "CONFIG")
 
     def reset(self, message, *args, **kws):
+        """
+        Log a reset message.
+
+        Args:
+            message (str): The message to be logged.
+            *args: Variable length argument list.
+            **kws: Arbitrary keyword arguments.
+
+        Returns:
+            None
+        """
         if self.isEnabledFor(60):
             self._log(60, Fore.RED + message + Style.RESET_ALL, args, **kws)
 
     def config(self, message, *args, **kws):
+        """
+        Log a config message.
+
+        Args:
+            message (str): The message to be logged.
+            *args: Variable length argument list.
+            **kws: Arbitrary keyword arguments.
+
+        Returns:
+            None
+        """
         if self.isEnabledFor(61):
             self._log(61, Fore.BLUE + message + Style.RESET_ALL, args, **kws)
 
 
-async def timer(duration, establish_session, addr, sock, sessions, logger):
-    for i in range(duration, 0, -1):
-        logger.reset(f"Timer: {i} seconds remaining")
-        await asyncio.sleep(1)
-    establish_session(addr, sock, sessions, logger)
-
-def start_timer(duration, establish_session, addr, sock, sessions, logger):
-    asyncio.run(timer(duration, establish_session, addr, sock, sessions, logger))
-
-# Define your action function here
 def establish_session(addr, sock, sessions, logger):
     logger.reset("Establishing session with %s"%(str(addr)))
     session_thread = Session(addr,sock,logger)
     session_threads.append(session_thread)
     session_thread.start()
-
-def read_json_file(file_path):
-    with open(file_path, 'r') as file:
-        data = json.load(file)
-    return data
 
 
 
@@ -371,6 +399,8 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', action='store_true', default=False)
     parser.add_argument('-p', '--port',type=int, default=10000, metavar='P',help= 'port to listen')
     args = parser.parse_args()
+
+    data_manager = DataManager()
 
     #reset flag
     reset_flag = False
@@ -446,7 +476,14 @@ if __name__ == "__main__":
                             # Get session data.
                             ses_msgs = session.getMsgLengths()
                             ses_timestamps = session.getTimestamps()
+                            
 
+                            print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+                            possible_ka,certainty = find_repeating_pattern(ses_msgs)
+                            print("Possible KA")
+                            print(possible_ka)
+                            print("Certainty of KA: ", certainty)
+                            print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
                             # Read in keep alive patterns
                             file_path = 'keep_alive_patterns.json'
                             ka_pattern = read_json_file(file_path)
@@ -507,30 +544,15 @@ if __name__ == "__main__":
                     reset_flag = False
                     ip = None
                     duration = None
-
-                    """ current_time = time.time()
-
-
-                    delay = current_time - startTime
-                    logger.reset("****Delay: %s****" % time.strftime("%H:%M:%S", time.gmtime(delay)))
-
-                    if current_time - startTime >= duration:
-                        logger.reset("***End time: %s***" % time.strftime("%H:%M:%S", time.gmtime(current_time)))
-                        print("----------------------------------------------------------------------------------")
-                        reset_flag = False
-                        ip = None
-                        duration = None """
-                    
-
                     
                     # Clear the reset info from the text file
                 elif reset_flag == True and ip != d_addr[0]:
-                    session_thread = Session(d_addr,d_sock,logger)
+                    session_thread = Session(d_addr,d_sock,logger, data_manager)
                     session_threads.append(session_thread)
                     session_thread.start()
 
                 else:
-                    session_thread = Session(d_addr,d_sock,logger)
+                    session_thread = Session(d_addr,d_sock,logger, data_manager)
                     session_threads.append(session_thread)
                     session_thread.start()
 

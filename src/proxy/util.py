@@ -1,10 +1,13 @@
 import socket,struct,typing
 from ipaddress import IPv4Address
-import socket, threading, logging, asyncio, argparse, time, os
-import threading
+import socket, asyncio
 from util import *
 from TLSRecon import TLSType
-from colorama import Fore, Style
+import json
+from collections import Counter
+import os
+
+
 
 
 def original_addr(csock: socket.socket) -> typing.Tuple[str, int]:
@@ -38,34 +41,59 @@ def device_type(length):
     if (388 < length) and (393 > length):
         return 'third_reality'
 
-class CustomLogger(logging.getLoggerClass()):
-    def __init__(self, name, level=logging.NOTSET):
-        super().__init__(name, level)
-
-        logging.addLevelName(60, "RESET")
-
-    def reset(self, message, *args, **kws):
-        if self.isEnabledFor(60):
-            self._log(60, Fore.RED + message + Style.RESET_ALL, args, **kws)
-
 
 async def timer(duration, establish_session, addr, sock, sessions, logger):
+    """
+    A timer function that waits for a specified duration and then establishes a session.
+
+    Args:
+        duration (int): The duration in seconds to wait.
+        establish_session (function): The function to call to establish a session.
+        addr (str): The address to establish the session with.
+        sock (socket): The socket to use for the session.
+        sessions (list): The list of sessions.
+        logger (Logger): The logger object to use for logging.
+
+    Returns:
+        None
+    """
     for i in range(duration, 0, -1):
         logger.reset(f"Timer: {i} seconds remaining")
         await asyncio.sleep(1)
     establish_session(addr, sock, sessions, logger)
 
+
 def start_timer(duration, establish_session, addr, sock, sessions, logger):
+    """
+    Starts a timer for the specified duration and runs the timer coroutine.
+
+    Args:
+        duration (float): The duration of the timer in seconds.
+        establish_session (coroutine): The coroutine function to establish a session.
+        addr (str): The address to establish the session with.
+        sock (socket): The socket to use for the session.
+        sessions (list): The list of active sessions.
+        logger (Logger): The logger object for logging.
+
+    Returns:
+        None
+    """
     asyncio.run(timer(duration, establish_session, addr, sock, sessions, logger))
 
 
-# This function finds the index of the most recent occurrence of a pattern in a given message data.
-# It takes two parameters:
-# - msgData: The message data in which the pattern is to be searched.
-# - pattern: The pattern to be searched in the message data.
-# It returns the index of the most recent occurrence of the pattern in the message data.
-# If the pattern is not found, it returns -1.
+
 def find_recent_pattern(msgData, pattern):
+    """
+    Finds the most recent index in the given `msgData` where the `pattern` is fully matched.
+
+    Args:
+        msgData (list): The list of data to search for the pattern.
+        pattern (list): The pattern to search for in the `msgData`.
+
+    Returns:
+        int: The most recent index where the pattern is fully matched. Returns -1 if no match is found.
+    """
+
     most_recent_index = -1
 
     for variation in pattern:
@@ -85,25 +113,95 @@ def find_recent_pattern(msgData, pattern):
     return most_recent_index
     
 
-def find_recent_pattern_without_variation(msgData, pattern):
-    idx_found = False
-    i, j = 0, 0
+def read_json_file(file_path):
+    """
+    Read and parse a JSON file.
 
-    while i < len(msgData):
-        if msgData[i] == pattern[j]:  # Check if current character matches the pattern
-            i += 1
-            j += 1
-        else:
-            if j != 0:  # If pattern partially matches, reset j to 0
-                j = 0
-            else:
-                i += 1  # If pattern doesn't match, move to the next character
+    Args:
+        file_path (str): The path to the JSON file.
 
-        if j == len(pattern):  # If pattern fully matches, set idx_found to True and reset j to 0
-            idx_found = True
-            j = 0
+    Returns:
+        dict: The parsed JSON data.
 
-    if idx_found:
-        return i - len(pattern)  # Return the index of the most recent occurrence of the pattern
+    Raises:
+        FileNotFoundError: If the specified file does not exist.
+        json.JSONDecodeError: If the file contains invalid JSON.
+
+    """
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+    return data
+
+
+
+def find_repeating_pattern(data):
+    """
+    Finds the most common repeating pattern in the given data.
+
+    Args:
+        data (list): The input data to search for repeating patterns.
+
+    Returns:
+        tuple: A tuple containing the most common repeating pattern found and its certainty.
+
+    Example:
+        >>> data = [1, 2, 3, 1, 2, 3, 1, 2, 3, 4, 5, 6]
+        >>> find_repeating_pattern(data)
+        ([1, 2, 3], 0.3)
+    """
+    if not data:
+        return None, 0
+
+    # Minimum size of the repeating pattern we expect to find
+    min_pattern_length = 2
+    max_pattern_length = len(data) // 2
+
+    # This dictionary will hold patterns and their frequencies
+    pattern_counts = Counter()
+
+    # Test various lengths of patterns
+    for pattern_length in range(min_pattern_length, max_pattern_length + 1):
+        # Slide over the data to extract patterns of the current length
+        for start in range(len(data) - pattern_length + 1):
+            # Extract the pattern and update the count in the dictionary
+            pattern = tuple(data[start:start + pattern_length])
+            pattern_counts[pattern] += 1
+
+    # Find the pattern with the maximum frequency
+    if not pattern_counts:
+        return None, 0
+
+    most_common_pattern, frequency = pattern_counts.most_common(1)[0]
+
+    # Calculate the certainty as the number of times the pattern appears divided by the possible times it could
+    total_occurrences = sum(pattern_counts.values())
+    certainty = frequency / total_occurrences
+
+    return list(most_common_pattern), certainty
+
+def update_session_data(address, msg_lengths, timestamps):
+    session_file = 'session_save.json'
+    
+    # Load existing data if file exists
+    if os.path.exists(session_file):
+        with open(session_file, 'r') as file:
+            try:
+                # Assuming the file contains a JSON object
+                data = json.load(file)
+            except json.JSONDecodeError:
+                data = {}
     else:
-        return -1  # Return -1 if pattern is not found
+        data = {}
+
+    # Update or add new data
+    if address[0] in data:
+        # Append to existing lists if the key exists
+        data[address[0]][0].extend(msg_lengths)
+        data[address[0]][1].extend(timestamps)
+    else:
+        # Create a new entry if the key does not exist
+        data[address[0]] = [msg_lengths, timestamps]
+
+    # Write the updated data back to the file
+    with open(session_file, 'w') as file:
+        json.dump(data, file, indent=4)
