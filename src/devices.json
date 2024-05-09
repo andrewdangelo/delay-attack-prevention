@@ -52,6 +52,33 @@
             "expire_time": "1711001051",
             "client_id": "01:fc:9c:98:5e:f7:19",
             "port": 10000
+        },
+        {
+            "name": "kasa_smart_plug",
+            "interface": "unknown",
+            "ip_address": "10.3.141.193",
+            "mac_address": "b8:b7:f1:b8:84:8e",
+            "expire_time": "1711001051",
+            "client_id": "01:fc:9c:98:5e:f7:19",
+            "port": 10000
+        },
+        {
+            "name": "kasa_smart_light",
+            "interface": "unknown",
+            "ip_address": "10.3.141.188",
+            "mac_address": "b8:b7:f1:b8:84:8e",
+            "expire_time": "1711001051",
+            "client_id": "01:fc:9c:98:5e:f7:19",
+            "port": 10000
+        },
+        {
+            "name": "third_reality_hub",
+            "interface": "unknown",
+            "ip_address": "10.3.141.188",
+            "mac_address": "b8:b7:f1:b8:84:8e",
+            "expire_time": "1711001051",
+            "client_id": "01:fc:9c:98:5e:f7:19",
+            "port": 10000
         }
     ]
 }
