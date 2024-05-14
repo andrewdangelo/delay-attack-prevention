@@ -7,7 +7,7 @@ import json
 from collections import Counter
 import os
 from datetime import datetime
-from optimization import process_data
+from optimization import DataProcessor, Optimizer
 
 
 
@@ -227,4 +227,17 @@ def command_listener(data_manager, logger):
             get_KA(data_manager)
         elif command == "PROCESS_KA":
             logger.info("Executing process_KA command")
-            process_data()
+            processor = DataProcessor('KAs.json', 'keep_alive_patterns.json')
+            processor.process_data()
+        """ elif command.startswith("OPTIMIZE"):
+            logger.info("Executing optimize command")
+            combined_data_file = 'combined_grouped.json'
+            with open(combined_data_file, 'r') as file:
+                combined_data = json.load(file)
+            # Process the combined data as needed
+            target_value = command.split(" ")[1]
+            # Call the optimize function with the target value
+            optimizer = Optimizer(combined_data, target_value)
+            optimizer.calculate_deltas()
+        else:
+            logger.warning("Invalid command") """

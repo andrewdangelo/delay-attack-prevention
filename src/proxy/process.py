@@ -15,6 +15,7 @@ import pytz
 from dataManager import DataManager
 
 
+
 class Session(threading.Thread):
     """
     Represents a session between a client and a server.

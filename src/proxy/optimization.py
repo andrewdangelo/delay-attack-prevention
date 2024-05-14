@@ -1,14 +1,54 @@
 import json
+import numpy as np
+from scipy.optimize import minimize
+from functools import reduce
+from math import gcd
 
-def process_data():
-    # Function to read and parse JSON files
-    def parse_json(file_path):
+
+
+class Optimizer:
+    def __init__(self, periods, deltas):
+        self.periods = periods
+        self.deltas = deltas
+    
+    def lcm(self, a, b):
+        return abs(a*b) // gcd(a, b)
+
+    def lcmm(self, *args):
+        return reduce(self.lcm, args)
+
+    def delay_window(self, t):
+        return np.min([(delta - t) % period for delta, period in zip(self.deltas, self.periods)])
+
+    def objective_function(self, T0):
+        integral = 0
+        dt = 0.1  # integration step size, smaller steps mean higher accuracy
+        for t in np.arange(0, T0, dt):
+            integral += self.delay_window(t)
+        return integral / T0
+
+    def optimize(self):
+        # Compute the total period T0
+        T0 = self.lcmm(*self.periods)
+
+        # Optimization to find the optimal deltas
+        result = minimize(self.objective_function, self.deltas, args=(self.periods, T0), method='L-BFGS-B', bounds=[(0, T) for T in self.periods])
+
+        return result.x, result.fun
+
+
+
+class DataProcessor:
+    def __init__(self, device_info_path, patterns_dict_path):
+        self.device_info_path = device_info_path
+        self.patterns_dict_path = patterns_dict_path
+
+    def parse_json(self, file_path):
         with open(file_path, 'r') as file:
             data = json.load(file)
         return data
 
-    # Function to match patterns in the message data
-    def match_patterns(msg_data, patterns):
+    def match_patterns(self, msg_data, patterns):
         matches = []
         for pattern in patterns:
             pattern_length = len(pattern)
@@ -17,8 +57,7 @@ def process_data():
                     matches.append((pattern, i))
         return matches
 
-    # Function to group information by patterns
-    def group_info_by_patterns(device_info, patterns_dict):
+    def group_info_by_patterns(self, device_info, patterns_dict):
         result = {}
         
         for device, data in device_info.items():
@@ -29,7 +68,7 @@ def process_data():
             if not patterns:
                 continue
             
-            matched_patterns = match_patterns(msg_data, patterns)
+            matched_patterns = self.match_patterns(msg_data, patterns)
             
             grouped_data = []
             for idx, (pattern, start_idx) in enumerate(matched_patterns):
@@ -42,7 +81,7 @@ def process_data():
         
         return result
     
-    def combine_grouped_data(grouped_data):
+    def combine_grouped_data(self, grouped_data):
         combined_data = []
         
         for device, data in grouped_data.items():
@@ -54,7 +93,7 @@ def process_data():
         
         return combined_data
     
-    def calculate_average_temporal_distance(data):
+    def calculate_average_temporal_distance(self, data):
         # Extract timestamps
         timestamps = [item[1] for item in data]
         
@@ -67,31 +106,59 @@ def process_data():
         average_distance = sum(temporal_distances) / len(temporal_distances)
         
         return average_distance
+    
+        # Function to calculate time differences (deltas) from a given KA label
+    def calculate_deltas(self, combined_data, target_label):
+        # Split target_label to separate KA label and IP address
+        target_ka, target_ip = target_label.split('_')
+        
+        # Find the timestamp for the target KA label (T0)
+        T0 = None
+        for label, timestamp in combined_data:
+            ka, ip = label.split('_')
+            if ka == target_ka and ip == target_ip:
+                T0 = timestamp
+                break
 
-    # Define the file paths to your JSON files
-    device_info_path = 'KAs.json'
-    patterns_dict_path = 'keep_alive_patterns.json'
+        if T0 is None:
+            raise ValueError(f"KA label '{target_label}' not found in the combined data.")
 
-    # Parse the device info and patterns dictionary from the JSON files
-    device_info = parse_json(device_info_path)
-    patterns_dict = parse_json(patterns_dict_path)
+        # Calculate the deltas while avoiding duplicate IP addresses
+        deltas = []
+        seen_ips = set()
+        for label, timestamp in combined_data:
+            ka, ip = label.split('_')
+            if ip not in seen_ips:
+                delta = timestamp - T0
+                deltas.append([label, delta])
+                seen_ips.add(ip)
 
-    # Group the information by patterns
-    grouped_data = group_info_by_patterns(device_info, patterns_dict)
-    combined_data = combine_grouped_data(grouped_data)
-    average_temporal_distance = calculate_average_temporal_distance(combined_data)
+        return deltas, T0
 
-    # Write the grouped data to a file called grouped.json
-    output_file_path = 'grouped.json'
-    with open(output_file_path, 'w') as output_file:
-        json.dump(grouped_data, output_file, indent=4)
+    def process_data(self):
+        # Parse the device info and patterns dictionary from the JSON files
+        device_info = self.parse_json(self.device_info_path)
+        patterns_dict = self.parse_json(self.patterns_dict_path)
 
-    combined_output_file_path = 'combined_grouped.json'
-    with open(combined_output_file_path, 'w') as output_file:
-        output_file.write(f"Average Temporal Distance: {average_temporal_distance}\n\n")
-        json.dump(combined_data, output_file, indent=4)
+        # Group the information by patterns
+        grouped_data = self.group_info_by_patterns(device_info, patterns_dict)
+        combined_data = self.combine_grouped_data(grouped_data)
+        average_temporal_distance = self.calculate_average_temporal_distance(combined_data)
+        deltas, T0 = self.calculate_deltas(combined_data, 'KA4_10.3.141.106')
 
-    print(f"Grouped data has been written to {output_file_path}")
+        # Write the grouped data to a file called grouped.json
+        output_file_path = 'grouped.json'
+        with open(output_file_path, 'w') as output_file:
+            json.dump(grouped_data, output_file, indent=4)
 
-# Call the function to process the data
-process_data()
+        combined_output_file_path = 'combined_grouped.json'
+        with open(combined_output_file_path, 'w') as output_file:
+            output_file.write(f"Average Temporal Distance: {average_temporal_distance}\n\n")
+            json.dump(combined_data, output_file, indent=4)
+
+        optimization_params_output_file_path = 'optimization_params.json'
+        with open(optimization_params_output_file_path, 'w') as output_file:
+            json.dump({'T0': T0, 'deltas': deltas}, output_file, indent=4)
+
+        print(f"Grouped data has been written to {output_file_path}")
+        
