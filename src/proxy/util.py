@@ -6,6 +6,8 @@ from TLSRecon import TLSType
 import json
 from collections import Counter
 import os
+from datetime import datetime
+from optimization import process_data
 
 
 
@@ -205,3 +207,24 @@ def update_session_data(address, msg_lengths, timestamps):
     # Write the updated data back to the file
     with open(session_file, 'w') as file:
         json.dump(data, file, indent=4)
+
+def get_KA(data_manager):
+    device_data = data_manager.get_all_data()  # Assuming get_all_data() retrieves all device data
+    
+    devices = {}  # Dictionary to hold all device data
+    
+    for device, data in device_data.items():
+        devices[device] = data
+    
+    with open('KAs.json', 'w') as file:
+        json.dump(devices, file, indent=4)
+
+def command_listener(data_manager, logger):
+    while True:
+        command = input("Enter command: ").strip()
+        if command == "GET_KA":
+            logger.info("Executing get_KA command")
+            get_KA(data_manager)
+        elif command == "PROCESS_KA":
+            logger.info("Executing process_KA command")
+            process_data()

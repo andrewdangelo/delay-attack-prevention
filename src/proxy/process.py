@@ -395,6 +395,8 @@ def establish_session(addr, sock, sessions, logger, data_manager):
 
 
 
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Transparent proxy for TLS sessions')
     parser.add_argument('-v', '--verbose', action='store_true', default=False)
@@ -439,6 +441,11 @@ if __name__ == "__main__":
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
+
+
+    # Start the command listener thread
+    command_thread = threading.Thread(target=command_listener, args=(data_manager, logger), daemon=True)
+    command_thread.start()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listen_sock:
         listen_sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)

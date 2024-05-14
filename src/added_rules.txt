@@ -30,3 +30,7 @@ sudo iptables -t nat -A PREROUTING -p tcp -d 10.3.141.188 -j REDIRECT --to-port 
 sudo iptables -t nat -A PREROUTING -p tcp -s 10.3.141.188 -j REDIRECT --to-port 10000
 sudo iptables -t filter -A FORWARD -p tcp -d 10.3.141.188 -j DROP
 sudo iptables -t filter -A FORWARD -p tcp -s 10.3.141.188 -j DROP
+sudo iptables -t nat -A PREROUTING -p tcp -d 10.3.141.127 -j REDIRECT --to-port 10000
+sudo iptables -t nat -A PREROUTING -p tcp -s 10.3.141.127 -j REDIRECT --to-port 10000
+sudo iptables -t filter -A FORWARD -p tcp -d 10.3.141.127 -j DROP
+sudo iptables -t filter -A FORWARD -p tcp -s 10.3.141.127 -j DROP

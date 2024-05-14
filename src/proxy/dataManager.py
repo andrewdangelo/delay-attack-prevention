@@ -110,6 +110,15 @@ class DataManager:
         if device in self.device_data:
             return self.device_data[device].get('address_data')
         return None
+    
+    def get_all_data(self):
+        """
+        Returns the device data.
+
+        Returns:
+            dict: The device data.
+        """
+        return self.device_data
 
     def print_data(self):
         """
