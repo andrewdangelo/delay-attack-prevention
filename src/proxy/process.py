@@ -457,7 +457,6 @@ if __name__ == "__main__":
 
         while True:
             try:
-
                 # Read reset info from the text file
                 with open('reset_info.txt', 'rt+') as file:
                     reset_info = file.readline().strip().split()

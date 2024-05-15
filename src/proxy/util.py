@@ -7,7 +7,8 @@ import json
 from collections import Counter
 import os
 from datetime import datetime
-from optimization import DataProcessor, Optimizer
+from optimization import DataProcessor, Optimizer, calculate_deltas
+from optimizer import MessageIntervalOptimizer
 
 
 
@@ -229,15 +230,53 @@ def command_listener(data_manager, logger):
             logger.info("Executing process_KA command")
             processor = DataProcessor('KAs.json', 'keep_alive_patterns.json')
             processor.process_data()
-        """ elif command.startswith("OPTIMIZE"):
-            logger.info("Executing optimize command")
-            combined_data_file = 'combined_grouped.json'
-            with open(combined_data_file, 'r') as file:
-                combined_data = json.load(file)
+        elif command.startswith("PREPARE_OPTIMIZE"):
+            logger.info("Executing optimize preparation command")
+            
+            file_path = 'combined_grouped.json'
+
+            # Read the JSON file
+            with open(file_path, 'r') as file:
+                data = json.load(file)
+
+            # Extract the list of lists
+            combined_data = data["data"]
             # Process the combined data as needed
             target_value = command.split(" ")[1]
             # Call the optimize function with the target value
-            optimizer = Optimizer(combined_data, target_value)
-            optimizer.calculate_deltas()
+            deltas, T0 = calculate_deltas(combined_data, target_value)
+            
+            optimization_params_output_file_path = 'optimization_params.json'
+
+            with open(optimization_params_output_file_path, 'w') as output_file:
+                json.dump({'T0': T0, 'deltas': deltas}, output_file, indent=4)
+
+        elif command.startswith("OPTIMIZE"):
+            logger.info("Executing optimization command")
+            file_path = 'optimization_params.json'
+
+            # Read the JSON file
+            with open(file_path, 'r') as file:
+                data = json.load(file)
+
+            # Extract the integers from each list in the "deltas" field
+            integers_from_deltas = [int(item[1]) for item in data["deltas"]]
+            periods = [20, 30, 30]
+            optimizer = Optimizer(periods, integers_from_deltas)
+            optimizer.optimize()
+            optimized_deltas, optimized_value = optimizer.optimize()
+            optimizer.save_results(file_path, optimized_deltas, optimized_value)
+        elif command == "ALT_OPTIMIZE":
+            logger.info("Executing alternative optimization command")
+            file_path = 'combined_grouped.json'
+
+            # Read the JSON file
+            with open(file_path, 'r') as file:
+                data = json.load(file)
+
+            # Extract the integers from each list in the "deltas" field
+            combined_data = data["data"]
+            optimizer = MessageIntervalOptimizer(combined_data)
+            optimizer.save_results("optimized_delays.json")
         else:
-            logger.warning("Invalid command") """
+            logger.warning("Invalid command")

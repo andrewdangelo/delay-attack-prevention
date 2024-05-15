@@ -20,22 +20,40 @@ class Optimizer:
     def delay_window(self, t):
         return np.min([(delta - t) % period for delta, period in zip(self.deltas, self.periods)])
 
-    def objective_function(self, T0):
+    def objective_function(self, deltas):
+        self.deltas = deltas  # Update the deltas
         integral = 0
         dt = 0.1  # integration step size, smaller steps mean higher accuracy
+        T0 = self.lcmm(*self.periods)
         for t in np.arange(0, T0, dt):
             integral += self.delay_window(t)
         return integral / T0
 
     def optimize(self):
+        # Ensure the lengths of deltas and periods match
+        if len(self.deltas) != len(self.periods):
+            raise ValueError("The length of deltas must match the length of periods.")
+
         # Compute the total period T0
         T0 = self.lcmm(*self.periods)
 
         # Optimization to find the optimal deltas
-        result = minimize(self.objective_function, self.deltas, args=(self.periods, T0), method='L-BFGS-B', bounds=[(0, T) for T in self.periods])
+        result = minimize(self.objective_function, self.deltas, method='L-BFGS-B', bounds=[(0, T) for T in self.periods])
 
         return result.x, result.fun
 
+    def save_results(self, file_path, optimized_deltas, optimized_value):
+        # Read the existing JSON file
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+
+        # Append the optimized deltas and the objective function value
+        data['optimized_deltas'] = optimized_deltas.tolist()
+        data['optimized_value'] = optimized_value
+
+        # Save the updated data back to the JSON file
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=4)
 
 
 class DataProcessor:
@@ -108,32 +126,36 @@ class DataProcessor:
         return average_distance
     
         # Function to calculate time differences (deltas) from a given KA label
-    def calculate_deltas(self, combined_data, target_label):
+    """ def calculate_deltas(self, combined_data, target_label):
         # Split target_label to separate KA label and IP address
         target_ka, target_ip = target_label.split('_')
+        print("Target IP: ", target_ip)
         
         # Find the timestamp for the target KA label (T0)
         T0 = None
-        for label, timestamp in combined_data:
-            ka, ip = label.split('_')
-            if ka == target_ka and ip == target_ip:
-                T0 = timestamp
-                break
-
-        if T0 is None:
-            raise ValueError(f"KA label '{target_label}' not found in the combined data.")
-
-        # Calculate the deltas while avoiding duplicate IP addresses
+        start_processing = False
         deltas = []
         seen_ips = set()
+        
         for label, timestamp in combined_data:
             ka, ip = label.split('_')
-            if ip not in seen_ips:
-                delta = timestamp - T0
-                deltas.append([label, delta])
-                seen_ips.add(ip)
+            if not start_processing and ka == target_ka and ip == target_ip:
+                T0 = timestamp
+                start_processing = True
+                continue
 
-        return deltas, T0
+            if start_processing:
+                if ip == target_ip:
+                    continue
+                if ip not in seen_ips:
+                    delta = timestamp - T0
+                    deltas.append([label, delta])
+                    seen_ips.add(ip)
+
+        if T0 is None:
+            print(f"KA label '{target_label}' not found in the combined data.")
+
+        return deltas, T0 """
 
     def process_data(self):
         # Parse the device info and patterns dictionary from the JSON files
@@ -143,8 +165,8 @@ class DataProcessor:
         # Group the information by patterns
         grouped_data = self.group_info_by_patterns(device_info, patterns_dict)
         combined_data = self.combine_grouped_data(grouped_data)
-        average_temporal_distance = self.calculate_average_temporal_distance(combined_data)
-        deltas, T0 = self.calculate_deltas(combined_data, 'KA4_10.3.141.106')
+        """ average_temporal_distance = self.calculate_average_temporal_distance(combined_data)
+        deltas, T0 = self.calculate_deltas(combined_data, self.target_label) """
 
         # Write the grouped data to a file called grouped.json
         output_file_path = 'grouped.json'
@@ -153,12 +175,43 @@ class DataProcessor:
 
         combined_output_file_path = 'combined_grouped.json'
         with open(combined_output_file_path, 'w') as output_file:
-            output_file.write(f"Average Temporal Distance: {average_temporal_distance}\n\n")
-            json.dump(combined_data, output_file, indent=4)
+            #output_file.write(f"Average Temporal Distance: {average_temporal_distance}\n\n")
+            json.dump({"data": combined_data}, output_file, indent=4)
 
-        optimization_params_output_file_path = 'optimization_params.json'
+        """ optimization_params_output_file_path = 'optimization_params.json'
         with open(optimization_params_output_file_path, 'w') as output_file:
-            json.dump({'T0': T0, 'deltas': deltas}, output_file, indent=4)
+            json.dump({'T0': T0, 'deltas': deltas}, output_file, indent=4) """
 
         print(f"Grouped data has been written to {output_file_path}")
         
+
+def calculate_deltas(combined_data, target_label):
+        # Split target_label to separate KA label and IP address
+        target_ka, target_ip = target_label.split('_')
+        print("Target IP: ", target_ip)
+        
+        # Find the timestamp for the target KA label (T0)
+        T0 = None
+        start_processing = False
+        deltas = []
+        seen_ips = set()
+        
+        for label, timestamp in combined_data:
+            ka, ip = label.split('_')
+            if not start_processing and ka == target_ka and ip == target_ip:
+                T0 = timestamp
+                start_processing = True
+                continue
+
+            if start_processing:
+                if ip == target_ip:
+                    continue
+                if ip not in seen_ips:
+                    delta = timestamp - T0
+                    deltas.append([label, delta])
+                    seen_ips.add(ip)
+
+        if T0 is None:
+            print(f"KA label '{target_label}' not found in the combined data.")
+
+        return deltas, T0

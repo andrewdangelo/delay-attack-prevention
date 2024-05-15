@@ -1,0 +1,12 @@
+{
+    "original_average_interval": 6.981429123663688,
+    "original_max_interval": 20.295523643493652,
+    "optimized_average_interval": 6.981429123663688,
+    "optimized_max_interval": 20.295523643493652,
+    "optimized_delays": {
+        "10.3.141.246": 0.0,
+        "10.3.141.106": 0.0,
+        "10.3.141.188": 0.0,
+        "10.3.141.127": 0.0
+    }
+}
