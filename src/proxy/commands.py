@@ -55,7 +55,7 @@ class CommandListener(threading.Thread):
 
         # Extract the integers from each list in the "deltas" field
         integers_from_deltas = [int(item[1]) for item in data["deltas"]]
-        periods = [20, 30, 30]
+        periods = [20, 30, 30, 30, 60]
         optimizer = Optimizer(periods, integers_from_deltas)
         optimized_deltas, optimized_value = optimizer.optimize()
         optimizer.save_results(file_path, optimized_deltas, optimized_value)
