@@ -396,8 +396,6 @@ def establish_session(addr, sock, sessions, logger, data_manager):
 
 
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Transparent proxy for TLS sessions')
     parser.add_argument('-v', '--verbose', action='store_true', default=False)
@@ -408,7 +406,7 @@ if __name__ == "__main__":
     data_manager = DataManager()
 
     #reset flag
-    reset_flag = False
+    #reset_flag = False
 
     ip = None
     duration = None
@@ -448,6 +446,78 @@ if __name__ == "__main__":
     command_listener = CommandListener(data_manager, logger)
     command_listener.start()
 
+    """ logging.info("Starting the reset info reader thread.")
+    reset_queue = Queue()
+    reset_info_reader = ResetInfoReader(reset_queue, logger)
+    reset_info_reader.start() """
+
+    reset_info_queue = Queue()
+
+    def read_reset_info():
+        while True:
+            with open('reset_info.txt', 'rt+') as file:
+                reset_info = file.readline().strip().split()
+            if reset_info:
+                ip = reset_info[0]
+                duration = int(reset_info[1])
+                deviation = float(reset_info[2])
+                reset_info_queue.put([ip, duration, deviation])
+                #close all the session threads with that ip address
+                print("==================================================================================")
+                logger.reset(f"Looking for session with IP: {ip}")
+                for session in session_threads:
+                    logger.config(f"Checking session with device IP: {session.d_addr}")
+                    if session.d_addr[0] == ip:
+                        # Find last closest KA to save.
+                        # Get session data.
+                        ses_msgs = data_manager.get_msg_data(ip)
+                        ses_timestamps = data_manager.get_timestamp_data(ip)
+                        
+
+                        print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+                        possible_ka,certainty = find_repeating_pattern(ses_msgs)
+                        print("Possible KA")
+                        print(possible_ka)
+                        print("Certainty of KA: ", certainty)
+                        print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                        # Read in keep alive patterns
+                        file_path = 'keep_alive_patterns.json'
+                        ka_pattern = read_json_file(file_path)
+
+                        # Find the most recent matching pattern
+                        idx_of_ka = find_recent_pattern(ses_msgs, ka_pattern[ip])
+                        print("KA pattern type: ", ka_pattern[ip])
+                        print("----------------------------------------------------------------------------------")
+                        if idx_of_ka >= 0:
+                            logger.reset(f"idx_of_ka: {idx_of_ka}")
+                        logger.reset(f"Data: {ses_msgs}")
+
+                        timestamp = ses_timestamps[idx_of_ka]
+                        est = pytz.timezone('US/Eastern')
+                        est_time_ka = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(est)
+
+                        logger.reset(f"Last Keep Alive: {est_time_ka}")
+
+                        print("----------------------------------------------------------------------------------")
+                        logger.reset("Session found!")
+                        logger.reset(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
+                        session.resetConnection()
+                        session_threads.remove(session)
+
+                    logger.reset("Ip address of source: %s" % ip)
+                    logger.reset("Duration: %s" % duration)
+                    logger.reset("Queue: %s" % reset_info_queue.qsize())
+
+                # Clear the reset info from the text file
+                with open('reset_info.txt', 'w') as file:
+                    file.write('')
+            time.sleep(1)  # Adjust the sleep duration as needed
+
+    # Start the reset info reader thread
+    reset_info_reader = threading.Thread(target=read_reset_info )
+    reset_info_reader.start()
+    
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listen_sock:
         listen_sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
         listen_sock.bind(('0.0.0.0',args.port))
@@ -457,109 +527,47 @@ if __name__ == "__main__":
 
         while True:
             try:
-                print("*****************TRIGGERED*********************")
-                # Read reset info from the text file
-                with open('reset_info.txt', 'rt+') as file:
-                    reset_info = file.readline().strip().split()
-
                 # Listens for an incoming socket connection on port 10000.
-                d_sock, d_addr = listen_sock.accept()
-                
-                # Check if reset info is available
-                if reset_info:
-                    # Capture the ip address, delay duration, and deviation
+                d_sock, d_addr = listen_sock.accept()   
+
+                # Check if the reset info queue has any data
+                # If it does, check if the incoming IP address matches the reset info IP address
+                # If it does, initiate the reset process
+                # If it doesn't, establish a new session with the incoming socket connection
+                if reset_info_queue.qsize() > 0:
+                    reset_info = reset_info_queue.get()
                     ip = reset_info[0]
-                    duration = int(reset_info[1])
-                    deviation = float(reset_info[2])
+                    duration = reset_info[1]
+                    deviation = reset_info[2]
 
-                    #set reset flag to true
-                    reset_flag = True
- 
+                    #if ip equals the s_addr of the incoming socket connection 
 
-                    #close all the session threads with that ip address
-                    print("==================================================================================")
-                    logger.reset(f"Looking for session with IP: {ip}")
-                    for session in session_threads:
-                        logger.config(f"Checking session with device IP: {session.d_addr}")
-                        if session.d_addr[0] == ip:
-                            # Find last closest KA to save.
-                            # Get session data.
-                            ses_msgs = data_manager.get_msg_data(ip)
-                            ses_timestamps = data_manager.get_timestamp_data(ip)
-                            
+                    if  ip == d_addr[0]:
+                        temp_addr = d_addr
+                        temp_sock = d_sock
 
-                            print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
-                            possible_ka,certainty = find_repeating_pattern(ses_msgs)
-                            print("Possible KA")
-                            print(possible_ka)
-                            print("Certainty of KA: ", certainty)
-                            print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                            # Read in keep alive patterns
-                            file_path = 'keep_alive_patterns.json'
-                            ka_pattern = read_json_file(file_path)
+                        startTime = time.time()
+                        print("==================================================================================")
+                        logger.reset("****Start Time: %s****" % time.strftime("%H:%M:%S", time.gmtime(startTime)))
+                        
+                        #Start the async countdown timer
+                        start_timer(duration, establish_session, temp_addr, temp_sock, session_threads, logger, data_manager)
 
-                            # Find the most recent matching pattern
-                            idx_of_ka = find_recent_pattern(ses_msgs, ka_pattern[ip])
-                            print("KA pattern type: ", ka_pattern[ip])
-                            print("----------------------------------------------------------------------------------")
-                            if idx_of_ka >= 0:
-                                logger.reset(f"idx_of_ka: {idx_of_ka}")
-                            logger.reset(f"Data: {ses_msgs}")
-
-                            timestamp = ses_timestamps[idx_of_ka]
-                            est = pytz.timezone('US/Eastern')
-                            est_time_ka = datetime.fromtimestamp(timestamp, tz=pytz.utc).astimezone(est)
-
-                            logger.reset(f"Last Keep Alive: {est_time_ka}")
-
-                            print("----------------------------------------------------------------------------------")
-                            logger.reset("Session found!")
-                            logger.reset(f"Initiating reset for session with IP {ip} and duration {duration} seconds")
-                            session.resetConnection()
-                            session_threads.remove(session)
-
-                    
-
-                    # Start duration timer.
-
-                    #startTime = time.time()
-                    #logger.reset("****Start Time: %s****" % time.strftime("%H:%M:%S", time.gmtime(startTime)))
-                    logger.reset("Ip address of source: %s" % ip)
-                    logger.reset("Duration: %s" % duration)
-                    logger.reset("Reset Flag: %s" % reset_flag)
-                    # Clear the reset info from the text file
-                    with open('reset_info.txt', 'w') as file:
-                        file.write('')
-
-                    
-
-                #if ip equals the s_addr of the incoming socket connection 
-                if reset_flag == True and ip == d_addr[0]:
-                    temp_addr = d_addr
-                    temp_sock = d_sock
-
-                    startTime = time.time()
-                    print("==================================================================================")
-                    logger.reset("****Start Time: %s****" % time.strftime("%H:%M:%S", time.gmtime(startTime)))
-                    
-                    #Start the async countdown timer
-                    start_timer(duration, establish_session, temp_addr, temp_sock, session_threads, logger, data_manager)
-
-                    current_time = time.time()
-                    logger.reset("***End time: %s***" % time.strftime("%H:%M:%S", time.gmtime(current_time)))
-                    delay = current_time - startTime
-                    logger.reset("****Delay: %s****" % time.strftime("%H:%M:%S", time.gmtime(delay)))
-                    print("==================================================================================")
-                    # Reset vars
-                    reset_flag = False
-                    ip = None
-                    duration = None
-                    
-                    # Clear the reset info from the text file
-                elif reset_flag == True and ip != d_addr[0]:
-                    session_thread = Session(d_addr,d_sock,logger, data_manager)
-                    session_threads.append(session_thread)
-                    session_thread.start()
+                        current_time = time.time()
+                        logger.reset("***End time: %s***" % time.strftime("%H:%M:%S", time.gmtime(current_time)))
+                        delay = current_time - startTime
+                        logger.reset("****Delay: %s****" % time.strftime("%H:%M:%S", time.gmtime(delay)))
+                        print("==================================================================================")
+                        # Reset vars
+                        ip = None
+                        duration = None
+                        
+                        
+                        # Clear the reset info from the text file
+                    elif ip != d_addr[0]:
+                        session_thread = Session(d_addr,d_sock,logger, data_manager)
+                        session_threads.append(session_thread)
+                        session_thread.start()
 
                 else:
                     session_thread = Session(d_addr,d_sock,logger, data_manager)

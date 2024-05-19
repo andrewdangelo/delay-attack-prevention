@@ -9,6 +9,8 @@ import os
 from datetime import datetime
 from optimization import DataProcessor, Optimizer, calculate_deltas
 from optimizer import MessageIntervalOptimizer
+import queue
+import threading
 
 
 
@@ -282,3 +284,36 @@ def command_listener(data_manager, logger):
             break
         else:
             logger.warning("Invalid command")
+
+
+class ResetInfoReader:
+    def __init__(self, reset_queue, logger):
+        self.reset_queue = reset_queue
+        self.stop_event = threading.Event()
+        self.logger = logger
+
+    def start(self):
+        self.thread = threading.Thread(target=self.read_reset_info)
+        self.thread.start()
+
+    def stop(self):
+        self.stop_event.set()
+        self.thread.join()
+
+    def read_reset_info(self):
+        while not self.stop_event.is_set():
+            try:
+                if os.path.exists('reset_info.txt'):
+                    with open('reset_info.txt', 'rt+') as file:
+                        reset_info = file.readline().strip().split()
+                        if reset_info:
+                            ip = reset_info[0]
+                            duration = int(reset_info[1])
+                            deviation = float(reset_info[2])
+                            reset_flag = True
+                            self.logger.info(f"Reset info read from file: IP={ip}, Duration={duration}, Deviation={deviation}")
+
+                            # Put the read data into the queue
+                            self.reset_queue.put((ip, duration, deviation, reset_flag))
+            except Exception as e:
+                self.logger.error(f"Error reading reset_info.txt: {e}")
