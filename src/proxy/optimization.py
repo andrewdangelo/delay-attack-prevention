@@ -4,9 +4,63 @@ from scipy.optimize import minimize
 from functools import reduce
 from math import gcd
 
-
-
 class Optimizer:
+    def __init__(self, periods, deltas):
+        self.periods = periods
+        self.deltas = deltas
+    
+    def lcm(self, a, b):
+        return abs(a * b) // gcd(a, b)
+
+    def lcmm(self, *args):
+        return reduce(self.lcm, args)
+
+    def normalize_deltas(self):
+        min_delta = min(self.deltas)
+        return [delta - min_delta for delta in self.deltas]
+
+    def delay_window(self, t):
+        return np.min([(delta - t) % period for delta, period in zip(self.deltas, self.periods)])
+
+    def objective_function(self, deltas):
+        self.deltas = deltas  # Update the deltas
+        integral = 0
+        dt = 0.1  # integration step size, smaller steps mean higher accuracy
+        T0 = self.lcmm(*self.periods)
+        for t in np.arange(0, T0, dt):
+            integral += self.delay_window(t)
+        return integral / T0
+
+    def optimize(self):
+        # Ensure the lengths of deltas and periods match
+        if len(self.deltas) != len(self.periods):
+            raise ValueError("The length of deltas must match the length of periods.")
+
+        # Normalize the deltas
+        normalized_deltas = self.normalize_deltas()
+
+        # Compute the total period T0
+        T0 = self.lcmm(*self.periods)
+
+        # Optimization to find the optimal deltas
+        result = minimize(self.objective_function, normalized_deltas, method='L-BFGS-B', bounds=[(0, T) for T in self.periods])
+
+        return result.x, result.fun
+
+    def save_results(self, file_path, optimized_deltas, optimized_value):
+        # Read the existing JSON file
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+
+        # Append the optimized deltas and the objective function value
+        data['optimized_deltas'] = optimized_deltas.tolist()
+        data['optimized_value'] = optimized_value
+
+        # Save the updated data back to the JSON file
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=4)
+
+class Optimizer2:
     def __init__(self, periods, deltas):
         self.periods = periods
         self.deltas = deltas

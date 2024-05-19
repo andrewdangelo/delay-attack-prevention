@@ -1,11 +1,13 @@
-import numpy as np
+
 import json
+import numpy as np
 
 class MessageIntervalOptimizer:
-    def __init__(self, data, learning_rate=0.01, num_iterations=1000):
+    def __init__(self, data, learning_rate=0.01, num_iterations=1000, initial_delay_range=0.1):
         self.data = data
         self.learning_rate = learning_rate
         self.num_iterations = num_iterations
+        self.initial_delay_range = initial_delay_range
         self.delays = {}
         self._parse_data()
 
@@ -21,7 +23,7 @@ class MessageIntervalOptimizer:
         self.timestamps = [timestamp for sublist in self.data_dict.values() for timestamp in sublist]
         self.ips = [ip for ip, sublist in self.data_dict.items() for _ in sublist]
         self.unique_ips = list(self.data_dict.keys())
-        self.delays = {ip: 0.0 for ip in self.unique_ips}
+        self.delays = {ip: np.random.uniform(-self.initial_delay_range, self.initial_delay_range) for ip in self.unique_ips}
 
     def _apply_delays(self, timestamps, ips, delays):
         return [timestamp + delays[ip] for timestamp, ip in zip(timestamps, ips)]
@@ -45,15 +47,24 @@ class MessageIntervalOptimizer:
             gradients = {}
             for ip in self.unique_ips:
                 original_delay = self.delays[ip]
-                self.delays[ip] += self.learning_rate
+                delta = self.learning_rate
+
+                # Perturb the delay
+                self.delays[ip] += delta
                 adjusted_timestamps = self._apply_delays(self.timestamps, self.ips, self.delays)
                 new_intervals = self._calculate_intervals(adjusted_timestamps)
                 new_max_interval = np.max(new_intervals)
-                gradients[ip] = (new_max_interval - current_max_interval) / self.learning_rate
+
+                # Calculate the gradient
+                gradients[ip] = (new_max_interval - current_max_interval) / delta
                 self.delays[ip] = original_delay
 
+            # Update the delays based on gradients
             for ip in self.unique_ips:
                 self.delays[ip] -= self.learning_rate * gradients[ip]
+
+            # Reduce learning rate over time
+            self.learning_rate *= 0.99
 
             if iteration % 100 == 0:
                 current_max_interval = np.max(self._calculate_intervals(self._apply_delays(self.timestamps, self.ips, self.delays)))
@@ -77,6 +88,3 @@ class MessageIntervalOptimizer:
         }
         with open(file_path, 'w') as f:
             json.dump(results, f, indent=4)
-
-
-

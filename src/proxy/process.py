@@ -13,7 +13,7 @@ from util import find_recent_pattern, start_timer, read_json_file
 from datetime import datetime
 import pytz
 from dataManager import DataManager
-
+from commands import CommandListener
 
 
 class Session(threading.Thread):
@@ -445,8 +445,8 @@ if __name__ == "__main__":
 
 
     # Start the command listener thread
-    command_thread = threading.Thread(target=command_listener, args=(data_manager, logger), daemon=True)
-    command_thread.start()
+    command_listener = CommandListener(data_manager, logger)
+    command_listener.start()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listen_sock:
         listen_sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
@@ -457,6 +457,7 @@ if __name__ == "__main__":
 
         while True:
             try:
+                print("*****************TRIGGERED*********************")
                 # Read reset info from the text file
                 with open('reset_info.txt', 'rt+') as file:
                     reset_info = file.readline().strip().split()

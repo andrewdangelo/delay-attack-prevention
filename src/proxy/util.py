@@ -278,5 +278,7 @@ def command_listener(data_manager, logger):
             combined_data = data["data"]
             optimizer = MessageIntervalOptimizer(combined_data)
             optimizer.save_results("optimized_delays.json")
+        elif command == "KILL":
+            break
         else:
             logger.warning("Invalid command")
